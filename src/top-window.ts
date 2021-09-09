@@ -16,6 +16,7 @@
 
 import { isMessageSourceWindow } from './dom-utils';
 import { isObject } from './is-object';
+import { PostMessageProxy } from './post-message-proxy';
 import { requestIdleCallback } from './request-idle-callback';
 
 export class TopWindowFinder {
@@ -24,11 +25,11 @@ export class TopWindowFinder {
   private topMostWindow: Window = window.top || window.self;
   private gotResponse = false;
 
-  constructor() {
+  constructor(private postMessageProxy: PostMessageProxy) {
     // Respond to ping messages from descendants who want to know if we are
     // running the content script or not and update our state if we get a pong
     // message.
-    window.addEventListener('message', (event) => {
+    this.postMessageProxy.addListener((event) => {
       if (isObject(event) && isMessageSourceWindow(event.source)) {
         if (event.data === '10ten(ja):ping') {
           event.source.postMessage('10ten(ja):pong', '*');

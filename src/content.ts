@@ -106,6 +106,7 @@ import { TextRange, textRangesEqual } from './text-range';
 import { hasReasonableTimerResolution } from './timer-precision';
 import { TopWindowFinder } from './top-window';
 import { BackgroundMessageSchema } from './background-message';
+import { PostMessageProxy } from './post-message-proxy';
 
 const enum HoldToShowKeyType {
   Text = 1 << 0,
@@ -115,6 +116,7 @@ const enum HoldToShowKeyType {
 
 export type ContentHandlerInit = {
   config: ContentConfig;
+  postMessageProxy: PostMessageProxy;
   topWindowFinder: TopWindowFinder;
 };
 
@@ -145,6 +147,7 @@ export class ContentHandler {
   //
   private config: ContentConfig;
   private topWindowFinder: TopWindowFinder;
+  private postMessageProxy: PostMessageProxy;
 
   //
   // Text handling window concerns
@@ -237,6 +240,7 @@ export class ContentHandler {
 
   constructor(init: ContentHandlerInit) {
     this.config = init.config;
+    this.postMessageProxy = init.postMessageProxy;
     this.topWindowFinder = init.topWindowFinder;
     this.textHighlighter = new TextHighlighter();
 
@@ -252,7 +256,7 @@ export class ContentHandler {
     window.addEventListener('keydown', this.onKeyDown, { capture: true });
     window.addEventListener('keyup', this.onKeyUp, { capture: true });
     window.addEventListener('focusin', this.onFocusIn);
-    window.addEventListener('message', this.onContentMessage);
+    this.postMessageProxy.addListener(this.onContentMessage);
 
     hasReasonableTimerResolution().then((isReasonable) => {
       if (isReasonable) {
@@ -1685,7 +1689,8 @@ declare global {
   }
 
   let contentHandler: ContentHandler | null = null;
-  let topWindowFinder: TopWindowFinder = new TopWindowFinder();
+  const postMessageProxy = new PostMessageProxy();
+  const topWindowFinder = new TopWindowFinder(postMessageProxy);
 
   // Port to the background page.
   //
@@ -1702,6 +1707,7 @@ declare global {
   window.readerScriptVer = __VERSION__;
   window.removeReaderScript = () => {
     disable();
+    postMessageProxy.detach();
     browser.runtime.onMessage.removeListener(onMessage);
   };
 
@@ -1761,7 +1767,11 @@ declare global {
       removePuck();
       removeSafeAreaProvider();
 
-      contentHandler = new ContentHandler({ config, topWindowFinder });
+      contentHandler = new ContentHandler({
+        config,
+        postMessageProxy,
+        topWindowFinder,
+      });
     }
 
     // If we are running in "activeTab" mode we will get passed our tab ID
