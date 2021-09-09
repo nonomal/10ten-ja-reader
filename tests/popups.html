@@ -31,7 +31,11 @@
     showRomaji: false,
     switchDictionaryKeys: [],
   };
-  const contentHandler = new ContentHandler(config);
+  const topWindowFinder = {
+    getTopMostWindow: () => window.top,
+    isTopMostWindow: () => window.self === window.top,
+  };
+  const contentHandler = new ContentHandler({ config, topWindowFinder });
 </script>
 <body>
   <div id="container"></div>

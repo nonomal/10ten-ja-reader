@@ -104,7 +104,7 @@ import {
 import { TextHighlighter } from './text-highlighter';
 import { TextRange, textRangesEqual } from './text-range';
 import { hasReasonableTimerResolution } from './timer-precision';
-import { getTopMostWindow, isTopMostWindow } from './top-window';
+import { TopWindowFinder } from './top-window';
 import { BackgroundMessageSchema } from './background-message';
 
 const enum HoldToShowKeyType {
@@ -112,6 +112,11 @@ const enum HoldToShowKeyType {
   Images = 1 << 1,
   All = Text | Images,
 }
+
+export type ContentHandlerInit = {
+  config: ContentConfig;
+  topWindowFinder: TopWindowFinder;
+};
 
 export class ContentHandler {
   // The content script is injected into every frame in a page but we delegate
@@ -139,6 +144,7 @@ export class ContentHandler {
   // Common concerns
   //
   private config: ContentConfig;
+  private topWindowFinder: TopWindowFinder;
 
   //
   // Text handling window concerns
@@ -229,8 +235,9 @@ export class ContentHandler {
   // Consulted in order to determine popup positioning
   private puck: LookupPuck | null = null;
 
-  constructor(config: ContentConfig) {
-    this.config = config;
+  constructor(init: ContentHandlerInit) {
+    this.config = init.config;
+    this.topWindowFinder = init.topWindowFinder;
     this.textHighlighter = new TextHighlighter();
 
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -256,11 +263,10 @@ export class ContentHandler {
     this.setUpSafeAreaProvider({ doc: document });
 
     // If we are an iframe, check if the popup is currently showing
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):isPopupShown' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):isPopupShown' }, '*');
     }
 
     this.applyPuckConfig();
@@ -272,7 +278,7 @@ export class ContentHandler {
   }
 
   applyPuckConfig() {
-    if (!isTopMostWindow()) {
+    if (!this.topWindowFinder.isTopMostWindow()) {
       return;
     }
 
@@ -730,7 +736,9 @@ export class ContentHandler {
   }
 
   isVisible(): boolean {
-    return isTopMostWindow() ? isPopupVisible() : this.isPopupShowing;
+    return this.topWindowFinder.isTopMostWindow()
+      ? isPopupVisible()
+      : this.isPopupShowing;
   }
 
   onContentMessage(ev: MessageEvent<ContentMessage>) {
@@ -749,7 +757,7 @@ export class ContentHandler {
     switch (ev.data.kind) {
       case '10ten(ja):lookup':
         {
-          if (!isTopMostWindow()) {
+          if (!this.topWindowFinder.isTopMostWindow()) {
             return;
           }
 
@@ -796,49 +804,49 @@ export class ContentHandler {
         break;
 
       case '10ten(ja):clearResult':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.clearResult();
         }
         break;
 
       case '10ten(ja):nextDictionary':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.showNextDictionary();
         }
         break;
 
       case '10ten(ja):toggleDefinition':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.toggleDefinition();
         }
         break;
 
       case '10ten(ja):movePopup':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.movePopup(ev.data.direction);
         }
         break;
 
       case '10ten(ja):enterCopyMode':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.enterCopyMode();
         }
         break;
 
       case '10ten(ja):exitCopyMode':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.exitCopyMode();
         }
         break;
 
       case '10ten(ja):nextCopyEntry':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.nextCopyEntry();
         }
         break;
 
       case '10ten(ja):copyCurrentEntry':
-        if (isTopMostWindow()) {
+        if (this.topWindowFinder.isTopMostWindow()) {
           this.copyCurrentEntry(ev.data.copyType);
         }
         break;
@@ -894,11 +902,10 @@ export class ContentHandler {
   }
 
   showNextDictionary() {
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):nextDictionary' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):nextDictionary' }, '*');
       return;
     }
 
@@ -908,11 +915,13 @@ export class ContentHandler {
   }
 
   toggleDefinition() {
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):toggleDefinition' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>(
+          { kind: '10ten(ja):toggleDefinition' },
+          '*'
+        );
       return;
     }
 
@@ -921,11 +930,13 @@ export class ContentHandler {
   }
 
   movePopup(direction: 'up' | 'down') {
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):movePopup', direction },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>(
+          { kind: '10ten(ja):movePopup', direction },
+          '*'
+        );
       return;
     }
 
@@ -952,11 +963,10 @@ export class ContentHandler {
     //
     this.copyMode = true;
 
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):enterCopyMode' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):enterCopyMode' }, '*');
       return;
     }
 
@@ -969,11 +979,10 @@ export class ContentHandler {
     // topmost window.
     this.copyMode = false;
 
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):exitCopyMode' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):exitCopyMode' }, '*');
       return;
     }
 
@@ -981,11 +990,10 @@ export class ContentHandler {
   }
 
   nextCopyEntry() {
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):nextCopyEntry' },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):nextCopyEntry' }, '*');
       return;
     }
 
@@ -994,11 +1002,13 @@ export class ContentHandler {
   }
 
   copyCurrentEntry(copyType: CopyType) {
-    if (!isTopMostWindow()) {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):copyCurrentEntry', copyType },
-        '*'
-      );
+    if (!this.topWindowFinder.isTopMostWindow()) {
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>(
+          { kind: '10ten(ja):copyCurrentEntry', copyType },
+          '*'
+        );
       return;
     }
 
@@ -1115,7 +1125,10 @@ export class ContentHandler {
     this.lastMouseTarget = null;
     this.copyMode = false;
 
-    if (isTopMostWindow() && this.currentLookupParams?.source) {
+    if (
+      this.topWindowFinder.isTopMostWindow() &&
+      this.currentLookupParams?.source
+    ) {
       this.currentLookupParams.source.postMessage<ContentMessage>(
         { kind: '10ten(ja):clearTextHighlight' },
         '*'
@@ -1124,13 +1137,12 @@ export class ContentHandler {
       this.clearTextHighlight(currentElement);
     }
 
-    if (isTopMostWindow()) {
+    if (this.topWindowFinder.isTopMostWindow()) {
       this.hidePopup();
     } else {
-      getTopMostWindow().postMessage<ContentMessage>(
-        { kind: '10ten(ja):clearResult' },
-        '*'
-      );
+      this.topWindowFinder
+        .getTopMostWindow()
+        .postMessage<ContentMessage>({ kind: '10ten(ja):clearResult' }, '*');
     }
   }
 
@@ -1206,10 +1218,10 @@ export class ContentHandler {
       wordLookup: !!textAtPoint.textRange,
     };
 
-    if (isTopMostWindow()) {
+    if (this.topWindowFinder.isTopMostWindow()) {
       this.lookupText(lookupParams);
     } else {
-      getTopMostWindow().postMessage<ContentMessage>(
+      this.topWindowFinder.getTopMostWindow().postMessage<ContentMessage>(
         {
           ...lookupParams,
           kind: '10ten(ja):lookup',
@@ -1599,7 +1611,7 @@ export class ContentHandler {
       }
     }
 
-    if (isTopMostWindow()) {
+    if (this.topWindowFinder.isTopMostWindow()) {
       for (const frame of Array.from(window.frames)) {
         frame.postMessage<ContentMessage>(
           { kind: '10ten(ja):popupShown' },
@@ -1618,7 +1630,7 @@ export class ContentHandler {
 
     hidePopup();
 
-    if (wasShowing && isTopMostWindow()) {
+    if (wasShowing && this.topWindowFinder.isTopMostWindow()) {
       for (const frame of Array.from(window.frames)) {
         frame.postMessage<ContentMessage>(
           { kind: '10ten(ja):popupHidden' },
@@ -1673,6 +1685,7 @@ declare global {
   }
 
   let contentHandler: ContentHandler | null = null;
+  let topWindowFinder: TopWindowFinder = new TopWindowFinder();
 
   // Port to the background page.
   //
@@ -1748,7 +1761,7 @@ declare global {
       removePuck();
       removeSafeAreaProvider();
 
-      contentHandler = new ContentHandler(config);
+      contentHandler = new ContentHandler({ config, topWindowFinder });
     }
 
     // If we are running in "activeTab" mode we will get passed our tab ID
@@ -1756,7 +1769,11 @@ declare global {
     // know when we disappear so it can update the browser action status.
     //
     // We only need to do that if we're the root-most frame, however.
-    if (typeof tabId !== 'undefined' && isTopMostWindow() && !port) {
+    if (
+      typeof tabId !== 'undefined' &&
+      this.topWindowFinder.isTopMostWindow() &&
+      !port
+    ) {
       try {
         port = browser.runtime.connect(undefined, {
           name: `tab-${tabId}`,
