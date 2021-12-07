@@ -100,6 +100,7 @@ import {
   SafeAreaProviderRenderOptions,
 } from './safe-area-provider';
 import { isForeignObjectElement, isSvgDoc, isSvgSvgElement } from './svg';
+import { TapTracker } from './tap-tracker';
 import {
   getBestFitSize,
   getTargetProps,
@@ -172,6 +173,8 @@ export class ContentHandler {
   //
   // We don't show the popup when the mouse is moving at speed because it's
   // mostly distracting and introduces unnecessary work.
+  //
+  // (At some point we should roll all this up into a little helper class.)
   private static MOUSE_SPEED_SAMPLES = 2;
   private static MOUSE_SPEED_THRESHOLD = 0.5;
 
@@ -191,6 +194,10 @@ export class ContentHandler {
   // Used to try to detect when we are typing so we know when to ignore key
   // events.
   private typingMode: boolean = false;
+
+  // Detect if taps we get are clicks or long-presses so we know if we should
+  // clear the popup or not.
+  private tapTracker: TapTracker = new TapTracker();
 
   //
   // Top-most window concerns
@@ -240,6 +247,7 @@ export class ContentHandler {
 
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onFocusIn = this.onFocusIn.bind(this);
@@ -248,6 +256,7 @@ export class ContentHandler {
 
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('keydown', this.onKeyDown, { capture: true });
     window.addEventListener('keyup', this.onKeyUp, { capture: true });
     window.addEventListener('focusin', this.onFocusIn);
@@ -345,6 +354,7 @@ export class ContentHandler {
   detach() {
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('keydown', this.onKeyDown, { capture: true });
     window.removeEventListener('keyup', this.onKeyUp, { capture: true });
     window.removeEventListener('focusin', this.onFocusIn);
@@ -550,8 +560,20 @@ export class ContentHandler {
       return;
     }
 
-    // Clear the highlight since it interferes with selection.
-    this.clearResult({ currentElement: ev.target as Element });
+    // If this is a long-press, clear the highlight since it interferes with
+    // selection.
+    //
+    // For a short tap, however, we don't want to clear the popup since it's
+    // useful to be able to tap words on touch devices in order to look them up.
+    this.tapTracker.mouseDown((isTap: boolean) => {
+      if (!isTap) {
+        this.clearResult({ currentElement: ev.target as Element });
+      }
+    });
+  }
+
+  onMouseUp(ev: MouseEvent) {
+    this.tapTracker.mouseUp();
   }
 
   onKeyDown(ev: KeyboardEvent) {
