@@ -1,3 +1,5 @@
+/// <reference path="../common/constants.d.ts" />
+/// <reference path="./mail-extensions.d.ts" />
 /*
 
   10ten Japanese Reader
@@ -43,13 +45,12 @@
   when modifying any of the files. - Jon
 
 */
-
-import '../../manifest.json.src';
-
-import { AbortError, allDataSeries } from '@birchill/jpdict-idb';
 import Bugsnag from '@birchill/bugsnag-zero';
+import { AbortError, allDataSeries } from '@birchill/jpdict-idb';
 import * as s from 'superstruct';
 import browser, { Runtime, Tabs } from 'webextension-polyfill';
+
+import '../../manifest.json.src';
 
 import { Config } from '../common/config';
 import {
@@ -61,16 +62,22 @@ import { stripFields } from '../utils/strip-fields';
 import { Split } from '../utils/type-helpers';
 
 import TabManager from './all-tab-manager';
-import { BackgroundRequestSchema, SearchRequest } from './background-request';
-import { setDefaultToolbarIcon, updateBrowserAction } from './browser-action';
-import { initContextMenus, updateContextMenus } from './context-menus';
-import { FxFetcher } from './fx-fetcher';
 import {
+  BackgroundRequestSchema,
+  SearchOtherRequest,
+  SearchRequest,
+} from './background-request';
+import { setDefaultToolbarIcon, updateBrowserAction } from './browser-action';
+import { calculateEraDateTimeSpan } from './calculate-date';
+import { registerMenuListeners, updateContextMenus } from './context-menus';
+import { FxFetcher } from './fx-fetcher';
+import { isCurrentTabEnabled } from './is-current-tab-enabled';
+import {
+  JpdictStateWithFallback,
   cancelUpdateDb,
   deleteDb,
   initDb,
   searchWords as jpdictSearchWords,
-  JpdictStateWithFallback,
   searchKanji,
   searchNames,
   translate,
@@ -187,7 +194,9 @@ config.addChangeListener(async (changes) => {
     typeof showPuck !== 'undefined'
   ) {
     try {
+      const tabEnabled = await isCurrentTabEnabled(tabManager);
       await updateContextMenus({
+        tabEnabled,
         toggleMenuEnabled:
           typeof toggleMenuEnabled === 'undefined'
             ? config.contextMenuEnable
@@ -224,12 +233,10 @@ void config.ready.then(async () => {
   // a number of other things.
   await tabManager.init(config.contentConfig);
 
-  await initContextMenus({
-    onToggleMenu: toggle,
-    onTogglePuck: (enabled: boolean) => {
-      config.showPuck = enabled ? 'show' : 'hide';
-    },
-    tabManager,
+  const tabEnabled = await isCurrentTabEnabled(tabManager);
+
+  await updateContextMenus({
+    tabEnabled,
     toggleMenuEnabled: config.contextMenuEnable,
     showPuck: config.computedShowPuck === 'show',
   });
@@ -262,19 +269,32 @@ let jpdictState: JpdictStateWithFallback = {
 
 let dbInitialized = false;
 
-async function initJpDict() {
+const dbReady = (async () => {
   if (dbInitialized) {
-    return;
+    return true;
   }
-  dbInitialized = true;
+
+  Bugsnag.leaveBreadcrumb('Initializing dictionary...');
+
   await config.ready;
   await initDb({ lang: config.dictLang, onUpdate: onDbStatusUpdated });
-}
 
-Bugsnag.leaveBreadcrumb('Running initJpDict from startup...');
-initJpDict();
+  dbInitialized = true;
+
+  return true;
+})().catch((e) => {
+  console.error('Error initializing dictionary', e);
+  void Bugsnag.notify(e);
+
+  return false;
+});
 
 async function onDbStatusUpdated(state: JpdictStateWithFallback) {
+  const dbWasUnavailable =
+    jpdictState.words.state === 'empty' ||
+    jpdictState.words.state === 'unavailable';
+  const dbWasUpdating = jpdictState.updateState.type === 'updating';
+
   jpdictState = state;
 
   // Update all the different windows separately since they may have differing
@@ -290,6 +310,12 @@ async function onDbStatusUpdated(state: JpdictStateWithFallback) {
   }
 
   notifyDbListeners();
+
+  const dbIsAvailable = jpdictState.words.state === 'ok';
+  const dbIsUpdating = jpdictState.updateState.type === 'updating';
+  if ((dbWasUnavailable || dbWasUpdating) && dbIsAvailable && !dbIsUpdating) {
+    await tabManager.notifyDbUpdated();
+  }
 }
 
 function isDbUpdating() {
@@ -391,6 +417,8 @@ async function searchWords({
 }: SearchRequest & {
   abortSignal: AbortSignal;
 }): Promise<SearchWordsResult | null> {
+  await dbReady;
+
   const [words, dbStatus] = await jpdictSearchWords({
     abortSignal,
     input,
@@ -405,17 +433,12 @@ async function searchWords({
 
 async function searchOther({
   input,
+  wordsMatchLen,
   abortSignal,
-}: SearchRequest & {
+}: SearchOtherRequest & {
   abortSignal: AbortSignal;
 }): Promise<SearchOtherResult | null> {
-  // Kanji
-  const kanjiResult = await searchKanji([...input][0]);
-  const kanji = typeof kanjiResult === 'string' ? null : kanjiResult;
-
-  if (abortSignal.aborted) {
-    throw new AbortError();
-  }
+  await dbReady;
 
   // Names
   const nameResult = await searchNames({ abortSignal, input });
@@ -425,21 +448,27 @@ async function searchOther({
     throw new AbortError();
   }
 
+  // Kanji
+  const longestMatch = Math.max(wordsMatchLen, names?.matchLen ?? 0);
+  const kanjiResult = await searchKanji(input.slice(0, longestMatch || 1));
+  const kanji = typeof kanjiResult === 'string' ? null : kanjiResult;
+
+  if (abortSignal.aborted) {
+    throw new AbortError();
+  }
+
   if (!kanji && !names) {
     return null;
   }
 
-  return {
-    kanji,
-    names,
-  };
+  return { kanji, names };
 }
 
 //
 // Browser event handlers
 //
 
-async function toggle(tab: Tabs.Tab) {
+async function toggle(tab?: Tabs.Tab) {
   await config.ready;
   await tabManager.toggleTab(tab, config.contentConfig);
 }
@@ -461,7 +490,10 @@ let pendingSearchOtherRequest:
   | undefined;
 
 browser.runtime.onMessage.addListener(
-  (request: unknown, sender: Runtime.MessageSender): void | Promise<any> => {
+  (
+    request: unknown,
+    sender: Runtime.MessageSender
+  ): undefined | Promise<any> => {
     if (!s.is(request, BackgroundRequestSchema)) {
       // We can sometimes get requests here from other extensions?
       //
@@ -474,7 +506,7 @@ browser.runtime.onMessage.addListener(
       // Curiously in all cases the user agent was not identified so I'm not
       // sure if this can happen in all browsers or not.
       console.warn(`Unrecognized request: ${JSON.stringify(request)}`);
-      return;
+      return undefined;
     }
 
     switch (request.type) {
@@ -482,7 +514,12 @@ browser.runtime.onMessage.addListener(
         return browser.runtime.openOptionsPage();
 
       case 'searchWords':
+        Bugsnag.leaveBreadcrumb('Searching for words', {
+          ...request,
+          input: 'x'.repeat(request.input.length),
+        });
         if (pendingSearchWordsRequest) {
+          Bugsnag.leaveBreadcrumb('Canceling previous search');
           pendingSearchWordsRequest.controller.abort();
           pendingSearchWordsRequest = undefined;
         }
@@ -498,38 +535,6 @@ browser.runtime.onMessage.addListener(
           input: request.input,
           controller: new AbortController(),
         };
-
-        // Detect if this was likely a lookup that resulted in the mouse
-        // onboarding being shown so we can set a hard limit on how many times
-        // we show it.
-        //
-        // Specifically, if the user has done over a thousand lookups on this
-        // device and _still_ hasn't dismissed the onboarding, they're probably
-        // never going to (or have hit some snag where they _can't_).
-        // In that case, we should dismiss it for them instead of continuing to
-        // bother them.
-        //
-        // The following logic roughly mimicks the conditions used in the content
-        // script to determine if we should show the onboarding but doesn't
-        // account for whether or not the user is looking up using the puck or
-        // touch. As a result, if the user is consistently using the puck/touch,
-        // we may decide we no longer need to show the onboarding and, if the
-        // user later decides to try using the mouse, they'll miss our beautiful
-        // onboarding notice.
-        //
-        // That's probably ok, however, and saves us having to thread the "was
-        // a mouse lookup?" state all the way from the content thread.
-        if (
-          config.popupInteractive &&
-          !config.hasDismissedMouseOnboarding &&
-          config.hasUpgradedFromPreMouse
-        ) {
-          config.incrementNumLookupsWithMouseOnboarding();
-
-          if (config.numLookupsWithMouseOnboarding > 1000) {
-            config.setHasDismissedMouseOnboarding();
-          }
-        }
 
         return (async () => {
           try {
@@ -551,7 +556,12 @@ browser.runtime.onMessage.addListener(
         })();
 
       case 'searchOther':
+        Bugsnag.leaveBreadcrumb('Searching for non-words', {
+          ...request,
+          input: 'x'.repeat(request.input.length),
+        });
         if (pendingSearchOtherRequest) {
+          Bugsnag.leaveBreadcrumb('Canceling previous search');
           pendingSearchOtherRequest.controller.abort();
           pendingSearchOtherRequest = undefined;
         }
@@ -580,31 +590,55 @@ browser.runtime.onMessage.addListener(
           }
         })();
 
-      case 'showMouseOnboarding':
-        return browser.tabs.create({
-          url: browser.runtime.getURL('docs/introducing-the-mouse.html'),
-        });
+      case 'calculateEraDateTimeSpan':
+        Bugsnag.leaveBreadcrumb('Calculating era date time span', request);
+        return Promise.resolve(calculateEraDateTimeSpan(request));
 
       case 'translate':
-        return translate({
-          text: request.input,
-          includeRomaji: request.includeRomaji,
+        Bugsnag.leaveBreadcrumb('Translating string', {
+          ...request,
+          input: 'x'.repeat(request.input.length),
         });
+        return dbReady
+          .then(() =>
+            translate({
+              text: request.input,
+              includeRomaji: request.includeRomaji,
+            })
+          )
+          .catch((e) => {
+            if (e.name === 'AbortError') {
+              return 'aborted';
+            }
+            void Bugsnag.notify(e);
+            return null;
+          });
 
       case 'toggleDefinition':
-        config.toggleReadingOnly();
+        Bugsnag.leaveBreadcrumb('Toggling definitions on/off');
+        void config.ready.then(() => {
+          config.toggleReadingOnly();
+        });
         break;
 
       case 'disableMouseInteraction':
-        config.popupInteractive = false;
-        break;
-
-      case 'dismissedMouseOnboarding':
-        config.setHasDismissedMouseOnboarding();
+        Bugsnag.leaveBreadcrumb('Disabling mouse interaction');
+        void config.ready.then(() => {
+          config.popupInteractive = false;
+        });
         break;
 
       case 'canHoverChanged':
-        config.canHover = request.value;
+        Bugsnag.leaveBreadcrumb('Changing hover ability setting', request);
+        void config.ready.then(() => {
+          config.canHover = request.value;
+        });
+        break;
+
+      case 'puckStateChanged':
+        void config.ready.then(() => {
+          config.puckState = request.value;
+        });
         break;
 
       case 'isDbUpdating':
@@ -684,6 +718,7 @@ browser.runtime.onMessage.addListener(
       case 'top:clearResult':
       case 'top:nextDictionary':
       case 'top:toggleDefinition':
+      case 'top:expandPopup':
       case 'top:movePopup':
       case 'top:enterCopyMode':
       case 'top:exitCopyMode':
@@ -705,6 +740,8 @@ browser.runtime.onMessage.addListener(
         }
         break;
     }
+
+    return undefined;
   }
 );
 
@@ -737,24 +774,53 @@ browser.runtime.onInstalled.addListener(async (details) => {
         browser.runtime.getManifest().version
       }`
     );
+  }
+});
 
-    const [major, minor] = details.previousVersion.split('.').map(Number);
-    if (major === 1 && minor < 12) {
-      // Wait for config to load before trying to update it or else we'll
-      // clobber the other local settings.
-      void config.ready.then(() => {
-        config.setHasUpgradedFromPreMouse();
-      });
+browser.runtime.onPerformanceWarning?.addListener(async (details) => {
+  // We'd really like to know which site this is happening on so we can debug
+  // and try to fix it.
+  //
+  // It's hard to be sure what is an acceptable amount of information to send,
+  // however.
+  //
+  // We'd like to report the full URL but even after stripping query strings,
+  // there's still the possibility of leaking private information such as with
+  // capability URLs.
+  //
+  // The hostname is probably safe but ideally we'd add an opt-out before
+  // sending that.
+  //
+  // Example code for fetching the hostname:
+  //
+  // let host: string | undefined;
+  // if (typeof details.tabId === 'number' && details.tabId) {
+  //   try {
+  //     const rawUrl = (await browser.tabs.get(details.tabId)).url;
+  //     if (rawUrl) {
+  //       const urlObj = new URL(rawUrl);
+  //       host = urlObj.hostname;
+  //     }
+  //   } catch {
+  //     /* Ignore */
+  //   }
+  // }
+  //
+  // For now we'll just see if we get these reports at all and decide if we need
+  // more information to fix them.
+  void Bugsnag.notify(
+    { name: 'PerformanceWarning', message: details.description },
+    {
+      metadata: { 'Performance warning': details },
     }
-  }
+  );
+});
 
-  // If we are still developing pre-1.12, act like we are upgrading so we can
-  // test the onboarding banner.
-  if (details.temporary && __VERSION__ === '1.11.0') {
-    void config.ready.then(() => {
-      config.setHasUpgradedFromPreMouse();
-    });
-  }
+registerMenuListeners({
+  onToggleMenu: toggle,
+  onTogglePuck: (enabled: boolean) => {
+    config.showPuck = enabled ? 'show' : 'hide';
+  },
 });
 
 // Mail extension steps

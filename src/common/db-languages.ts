@@ -1,4 +1,4 @@
-export const dbLanguages = <const>[
+export const dbLanguages = [
   'de',
   'en',
   'es',
@@ -9,9 +9,9 @@ export const dbLanguages = <const>[
   'ru',
   'sl',
   'sv',
-];
+] as const;
 
-export type DbLanguageId = typeof dbLanguages[number];
+export type DbLanguageId = (typeof dbLanguages)[number];
 
 export const dbLanguageMeta: Array<
   [DbLanguageId, { name: string; hasKanji?: boolean; hasWords?: boolean }]

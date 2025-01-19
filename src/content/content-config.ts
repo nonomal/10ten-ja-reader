@@ -47,13 +47,18 @@ export class ContentConfig implements ContentConfigParams {
     this.params = { ...params };
 
     const changes: ContentConfigChange[] = [];
+    const objectKeysWeCareAbout = ['autoExpand', 'puckState'];
     for (const [key, value] of Object.entries(
       before
     ) as Entries<ContentConfigParams>) {
-      // Currently we are only interested in a few keys that happen to have
-      // primitive values. If we ever want to report on changes to array/object
-      // values we'll need to do a deep equality check.
+      // We don't care about changes to most object-typed settings
       if (typeof value === 'object') {
+        if (
+          objectKeysWeCareAbout.includes(key) &&
+          JSON.stringify(value) !== JSON.stringify(this[key])
+        ) {
+          changes.push({ key, value: this[key] } as ContentConfigChange);
+        }
         continue;
       }
 
@@ -62,7 +67,9 @@ export class ContentConfig implements ContentConfigParams {
       }
     }
 
-    this.notifyListeners(changes);
+    if (changes.length) {
+      this.notifyListeners(changes);
+    }
   }
 
   addListener(listener: ContentConfigListener) {
@@ -111,17 +118,35 @@ export class ContentConfig implements ContentConfigParams {
   get accentDisplay() {
     return this.params.accentDisplay;
   }
+  get autoExpand() {
+    return this.params.autoExpand;
+  }
+  get copyHeadwords() {
+    return this.params.copyHeadwords;
+  }
+  get copyPos() {
+    return this.params.copyPos;
+  }
+  get copySenses() {
+    return this.params.copySenses;
+  }
+  get bunproDisplay() {
+    return this.params.bunproDisplay;
+  }
   get dictLang() {
     return this.params.dictLang;
+  }
+  get enableTapLookup() {
+    return this.params.enableTapLookup;
   }
   get fx() {
     return this.params.fx;
   }
-  get hasDismissedMouseOnboarding() {
-    return this.params.hasDismissedMouseOnboarding;
+  get fontFace() {
+    return this.params.fontFace;
   }
-  get hasUpgradedFromPreMouse() {
-    return this.params.hasUpgradedFromPreMouse;
+  get fontSize() {
+    return this.params.fontSize;
   }
   get highlightStyle() {
     return this.params.highlightStyle;
@@ -152,6 +177,12 @@ export class ContentConfig implements ContentConfigParams {
   get posDisplay() {
     return this.params.posDisplay;
   }
+  get preferredUnits() {
+    return this.params.preferredUnits;
+  }
+  get puckState() {
+    return this.params.puckState;
+  }
   get readingOnly() {
     return this.params.readingOnly;
   }
@@ -179,6 +210,9 @@ export class ContentConfig implements ContentConfigParams {
   }
   get toolbarIcon() {
     return this.params.toolbarIcon;
+  }
+  get waniKaniVocabDisplay() {
+    return this.params.waniKaniVocabDisplay;
   }
 
   // Extra computed properties

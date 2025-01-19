@@ -115,6 +115,10 @@
     "message": "辞書データを更新中のため、一部のデータのみ表示されています。",
     "description": "Status bar message shown while the dictionary is being updated and only a snapshot can be shown."
   },
+  "content_era_info_invalid": {
+    "message": "該当なし",
+    "description": "Message shown when we fail to calculate the corresponding Gregorian date of a pre-Gregorian era"
+  },
   "content_kanji_base_radical": {
     "message": "部 $char$ (​$readings$​)",
     "description": "The string used to describe the base radical",
@@ -202,26 +206,6 @@
   "content_kanji_strokes_label_1": {
     "message": "1画",
     "description": "The description of the number of strokes when there is exactly 1 stroke"
-  },
-  "content_mouse_onboarding_details_link": {
-    "message": "詳細…",
-    "description": "Link text to page with more details"
-  },
-  "content_mouse_onboarding_disable_button": {
-    "message": "無効にする",
-    "description": "Label for the button to turn off the mouse interaction"
-  },
-  "content_mouse_onboarding_explanation": {
-    "message": "このウィンドウ上のマウス操作が可能になりました。",
-    "description": "The text explaining that it is now possibly to mouse over th e popup"
-  },
-  "content_mouse_onboarding_new": {
-    "message": "新機能！",
-    "description": "The prefix announcing the new feature"
-  },
-  "content_mouse_onboarding_ok_button": {
-    "message": "OK",
-    "description": "Label for the button to dismiss the onboarding prompt"
   },
   "content_names_age": {
     "message": "$years$歳",
@@ -319,6 +303,34 @@
   "content_names_tag_work": {
     "message": "作品"
   },
+  "content_sk_match_src": {
+    "message": "「​$src$​」から",
+    "description": "The text used to show the sK/sk (search only) text that was used to look up the entry",
+    "placeholders": {
+      "src": {
+        "content": "$1",
+        "example": "御久しぶり"
+      }
+    }
+  },
+  "content_stroke_animation_play": {
+    "message": "筆順アニメーションを再生",
+    "description": "Tooltip to show when hovering over the play button for the stroke animation"
+  },
+  "content_stroke_animation_stop": {
+    "message": "筆順アニメーションを停止",
+    "description": "Tooltip to show when hovering over the stop button for the stroke animation"
+  },
+  "content_wk_link_title": {
+    "message": "WaniKaniで「​$content$​」のページを表示",
+    "description": "Tooltip for kanji and vocab links to WaniKani pages.",
+    "placeholders": {
+      "content": {
+        "content": "$1",
+        "example": "光"
+      }
+    }
+  },
   "currency_data_updated_label": {
     "message": "$updated$​に更新済み",
     "description": "Caption added to popup explaining when the currency data was last refreshed",
@@ -351,20 +363,29 @@
   "deinflect_continuous": {
     "message": "進行形"
   },
+  "deinflect_eru_uru": {
+    "message": "-得る"
+  },
+  "deinflect_humble": {
+    "message": "謙譲語"
+  },
+  "deinflect_humble_or_kansai_dialect": {
+    "message": "謙譲語・関西弁"
+  },
   "deinflect_imperative": {
     "message": "命令形"
   },
   "deinflect_imperative_negative": {
     "message": "否定命令形"
   },
+  "deinflect_irregular": {
+    "message": "不規則"
+  },
   "deinflect_ki": {
     "message": "連体形"
   },
   "deinflect_masu_stem": {
     "message": "連用形"
-  },
-  "deinflect_nasai": {
-    "message": "なさい形"
   },
   "deinflect_negative": {
     "message": "否定形"
@@ -401,6 +422,9 @@
   },
   "deinflect_potential_or_passive": {
     "message": "可能形・受身形・尊敬語"
+  },
+  "deinflect_respectful": {
+    "message": "尊敬語"
   },
   "deinflect_sou": {
     "message": "そう形"
@@ -482,6 +506,14 @@
   "dial_label_tsug": {
     "message": "津軽弁",
     "description": "Label used to describe senses whose dialect is 'tsug' (Tsugaru dialect)"
+  },
+  "entry_priority_label_high": {
+    "message": "非常に頻出",
+    "description": "Tooltip label used when user hovers over the filled star icon (★) to indicate a very frequent word"
+  },
+  "entry_priority_label_regular": {
+    "message": "やや頻出",
+    "description": "Tooltip label used when user hovers over the unfilled star icon (☆) to indicate a somewhat frequent word"
   },
   "error_command_could_not_parse": {
     "message": "「​$command$​」の構文解析が失敗しました",
@@ -578,6 +610,10 @@
     "message": "植物学",
     "description": "Label applied to senses with the 'bot' field"
   },
+  "field_label_boxing": {
+    "message": "ボクシング",
+    "description": "Label applied to senses with the 'boxing' field"
+  },
   "field_label_Buddh": {
     "message": "仏教",
     "description": "Label applied to senses with the 'Buddh' field"
@@ -594,9 +630,17 @@
     "message": "化学",
     "description": "Label applied to senses with the 'chem' field"
   },
+  "field_label_chmyth": {
+    "message": "中国神話",
+    "description": "Label applied to senses with the 'chmyth' field"
+  },
   "field_label_Christn": {
     "message": "キリスト教",
     "description": "Label applied to senses with the 'Christn' field"
+  },
+  "field_label_civeng": {
+    "message": "土木",
+    "description": "Label applied to senses with the 'civeng' field"
   },
   "field_label_cloth": {
     "message": "服装",
@@ -641,6 +685,10 @@
   "field_label_ent": {
     "message": "昆虫学",
     "description": "Label applied to senses with the 'ent' field"
+  },
+  "field_label_figskt": {
+    "message": "フィギュア",
+    "description": "Label applied to senses with the 'figskt' field"
   },
   "field_label_film": {
     "message": "映画",
@@ -702,6 +750,14 @@
     "message": "競馬",
     "description": "Label applied to senses with the 'horse' field"
   },
+  "field_label_internet": {
+    "message": "インターネット",
+    "description": "Label applied to senses with the 'internet' field"
+  },
+  "field_label_jpmyth": {
+    "message": "日本神話",
+    "description": "Label applied to senses with the 'jpmyth' field"
+  },
   "field_label_kabuki": {
     "message": "歌舞伎",
     "description": "Label applied to senses with the 'kabuki' field"
@@ -750,9 +806,17 @@
     "message": "軍事",
     "description": "Label applied to senses with the 'mil' field"
   },
+  "field_label_min": {
+    "message": "鉱物学",
+    "description": "Label applied to senses with the 'min' field"
+  },
   "field_label_mining": {
     "message": "鉱業",
     "description": "Label applied to senses with the 'mining' field"
+  },
+  "field_label_motor": {
+    "message": "モータースポーツ",
+    "description": "Label applied to senses with the 'motor' field"
   },
   "field_label_music": {
     "message": "音楽",
@@ -802,6 +866,10 @@
     "message": "印刷",
     "description": "Label applied to senses with the 'print' field"
   },
+  "field_label_prowres": {
+    "message": "プロレス",
+    "description": "Label applied to senses with the 'prowres' field"
+  },
   "field_label_psy": {
     "message": "精神科",
     "description": "Label applied to senses with the 'psy' field"
@@ -850,6 +918,10 @@
     "message": "相撲",
     "description": "Label applied to senses with the 'sumo' field"
   },
+  "field_label_surg": {
+    "message": "外科",
+    "description": "Label applied to senses with the 'surg' field"
+  },
   "field_label_telec": {
     "message": "通信",
     "description": "Label applied to senses with the 'telec' field"
@@ -861,6 +933,10 @@
   "field_label_tv": {
     "message": "テレビ",
     "description": "Label applied to senses with the 'tv' field"
+  },
+  "field_label_vet": {
+    "message": "獣医学",
+    "description": "Label applied to senses with the 'vet' field"
   },
   "field_label_vidg": {
     "message": "ゲーム",
@@ -922,13 +998,13 @@
     "message": "古",
     "description": "Short annotation given to kanji headwords that use out-dated kanji"
   },
+  "head_info_label_rkana": {
+    "message": "珍",
+    "description": "Short annotation given to kana headwords that use rarely-used kana forms"
+  },
   "head_info_label_rkanji": {
     "message": "珍",
     "description": "Short annotation given to kanji headwords that use rarely-used kanji forms"
-  },
-  "head_info_label_ukanji": {
-    "message": "かな表記が多い",
-    "description": "Short annotation given to kana headwords that are normally written in kanji alone"
   },
   "lang_label_af": {
     "message": "アフリカーンス語",
@@ -1082,6 +1158,10 @@
     "message": "ラテン語",
     "description": "Label used to describe senses whose source language is 'la' (Latin)"
   },
+  "lang_label_lt": {
+    "message": "リトアニア語",
+    "description": "Label used to describe senses whose source language is 'lt' (Lithuanian)"
+  },
   "lang_label_mi": {
     "message": "マオリ語",
     "description": "Label used to describe senses whose source language is 'mi' (Maori)"
@@ -1186,13 +1266,13 @@
     "message": "ウルドゥー語",
     "description": "Label used to describe senses whose source language is 'ur' (Urdu)"
   },
+  "lang_label_uz": {
+    "message": "ウズベク語",
+    "description": "Label used to describe senses whose source language is 'uz' (Uzbek)"
+  },
   "lang_label_vi": {
     "message": "ベトナム語",
     "description": "Label used to describe senses whose source language is 'vi' (Vietnamese)"
-  },
-  "lang_label_wasei": {
-    "message": "和製",
-    "description": "Label used to describe senses that are Japanese constructions (of English, presumably, as opposed to wasei kango)"
   },
   "lang_label_yi": {
     "message": "イディッシュ語",
@@ -1201,6 +1281,27 @@
   "lang_label_zh": {
     "message": "中国語",
     "description": "Label used to describe senses whose source language is 'zh' (Chinese)"
+  },
+  "lang_lsrc_prefix": {
+    "message": "（",
+    "description": "The start of the text used to indicate a source language, e.g. ' (from English)'"
+  },
+  "lang_lsrc_suffix": {
+    "message": "）",
+    "description": "The end of the text used to indicate a source language"
+  },
+  "lang_lsrc_wasei": {
+    "message": "和製​$lang$",
+    "placeholders": {
+      "lang": {
+        "content": "$1",
+        "example": "英語"
+      }
+    }
+  },
+  "lang_lsrc_wasei_prefix": {
+    "message": "（",
+    "description": "The start of the text used to indicate a source language when the first source language is waseigo, e.g. ' (wasei English)'"
   },
   "lang_tag": {
     "message": "ja",
@@ -1510,6 +1611,14 @@
     "message": "互換性",
     "description": "Heading for the section for configuring site compatibility"
   },
+  "options_copy_heading": {
+    "message": "クリップボードにコピー",
+    "description": "Heading for the section for configuring the copy to clipboard feature"
+  },
+  "options_copy_preview": {
+    "message": "プレビュー",
+    "description": "Label preceding the copy text preview"
+  },
   "options_currency_conversion_heading": {
     "message": "通貨換算",
     "description": "Heading for the section for configuring currency conversion"
@@ -1553,7 +1662,7 @@
     }
   },
   "options_data_source": {
-    "message": "使用しているデータにJMDict/EDICT、KANJIDICおよびJMnedict/ENAMDICTのデータが含まれております。",
+    "message": "使用しているデータにJMdict/EDICT、KANJIDICおよびJMnedict/ENAMDICTのデータが含まれております。",
     "description": "Attribute of source data. The strings 'JMdict/EDICT', 'KANJIDIC' and 'JMnedict/ENAMDICT' must appear so that they can be link-ified to the corresponding project home pages."
   },
   "options_database_initializing": {
@@ -1563,6 +1672,10 @@
   "options_database_unavailable": {
     "message": "データベースストレージ利用不可",
     "description": "Label when IndexedDB is unusable"
+  },
+  "options_database_unavailable_firefox": {
+    "message": "データベースストレージ利用不可。Firefoxが「履歴を一切記憶させない」に設定されているかどうかご確認ください。",
+    "description": "Label when IndexedDB is unusable with Firefox-specific help."
   },
   "options_db_update_error": {
     "message": "更新失敗しました。「​$errormessage$​」",
@@ -1600,6 +1713,10 @@
   "options_dictionary_language_heading": {
     "message": "辞書の言語"
   },
+  "options_disable_toggle_shortcut": {
+    "message": "オン・オフを切り替えるショートカットを無効にする",
+    "description": "Label for button to disable the toggle shortcut"
+  },
   "options_downloading_data": {
     "message": "$datatype$​バージョン​$version$​を読み込み中 (​$progress$​%)…",
     "description": "Label while we are downloading updates",
@@ -1626,6 +1743,46 @@
     "message": "ライセンス",
     "description": "The keyword in options_edrdg_license to link to the license"
   },
+  "options_expand_all_entries": {
+    "message": "すべての結果を展開する",
+    "description": "Leading text for options to automatically expand word or kanji entries"
+  },
+  "options_expand_kanji_label": {
+    "message": "漢字",
+    "description": "Label for checkbox to enable automatically expanding kanji entries"
+  },
+  "options_expand_words_label": {
+    "message": "単語",
+    "description": "Label for checkbox to enable automatically expanding word entries"
+  },
+  "options_font_face_bundled": {
+    "message": "搭載フォント",
+    "description": "Label for bundled font option."
+  },
+  "options_font_face_label": {
+    "message": "フォントフェイス",
+    "description": "Label for font face drop-down."
+  },
+  "options_font_face_system": {
+    "message": "システムフォント",
+    "description": "Label for system font option."
+  },
+  "options_font_size_label": {
+    "message": "フォントサイズ",
+    "description": "Label for font size drop-down."
+  },
+  "options_font_size_large": {
+    "message": "大きい",
+    "description": "Label for larger font size option."
+  },
+  "options_font_size_normal": {
+    "message": "標準",
+    "description": "Label for default font size option."
+  },
+  "options_font_size_xl": {
+    "message": "特大",
+    "description": "Label for largest font size option."
+  },
   "options_general_heading": {
     "message": "一般",
     "description": "Heading for common preferences."
@@ -1637,8 +1794,11 @@
     "message": "青"
   },
   "options_highlight_style_label": {
-    "message": "ハイライトテーマ",
-    "description": "Title for the section for selection the highlight color"
+    "message": "文字ハイライトのスタイル",
+    "description": "Title for the section for selection the highlight style"
+  },
+  "options_highlight_style_none": {
+    "message": "なし"
   },
   "options_highlight_style_yellow": {
     "message": "黄色"
@@ -1665,13 +1825,17 @@
     "message": "漢字辞典",
     "description": "Heading for options to configure what information is displayed from the kanji dictionary"
   },
+  "options_key_alternative": {
+    "message": "・",
+    "description": "The delimeter used between alternative popup keys"
+  },
   "options_keyboard_heading": {
     "message": "キーボード",
     "description": "Heading for options to configure keyboard commands"
   },
   "options_lang_kanji_only": {
     "message": "（漢字データのみ）",
-    "decsription": "Annotation added to language labels for languages where only the kanji data has been translated (i.e. but not the word data)"
+    "description": "Annotation added to language labels for languages where only the kanji data has been translated (i.e. but not the word data)"
   },
   "options_lang_warning_always_en": {
     "message": "単語の場合、英語の定義は常に表示されます。"
@@ -1693,7 +1857,7 @@
   },
   "options_lang_words_only": {
     "message": "（単語データのみ）",
-    "decsription": "Annotation added to language labels for languages where only the word data has been translated (i.e. but not the kanji data)"
+    "description": "Annotation added to language labels for languages where only the word data has been translated (i.e. but not the kanji data)"
   },
   "options_last_database_check": {
     "message": "更新確認時刻 $lastcheck$",
@@ -1718,10 +1882,6 @@
   "options_mouse_interactivity_label": {
     "message": "マウスの操作",
     "description": "Label for section for enabling mouse/touch interactivity in the popup"
-  },
-  "options_mouse_onboarding_learn_mode": {
-    "message": "マウス操作についての詳細説明",
-    "descripion": "Text for the link to the mouse onboarding page"
   },
   "options_name_data_name": {
     "message": "人名データ",
@@ -1763,6 +1923,9 @@
   },
   "options_popup_copy_word_kanji": {
     "message": "単語又は漢字をコピーする"
+  },
+  "options_popup_expand_popup": {
+    "message": "ポップアップを展開する"
   },
   "options_popup_interactivity_heading": {
     "message": "ポップアップの双方向性",
@@ -1811,6 +1974,14 @@
     "message": "なし",
     "description": "Label for hiding part-of-speech labels"
   },
+  "options_restore_toggle_shortcut": {
+    "message": "オン・オフを切り替えるショートカットを復元する",
+    "description": "Label for button to restore the toggle shortcut"
+  },
+  "options_show_bunpro_decks": {
+    "message": "文プロデッキ情報を表示",
+    "description": "Label for enabling display of Bunpro vocab and grammar deck information alongside headwords"
+  },
   "options_show_context_menu_item": {
     "message": "コンテキストメニューに「10ten readerを有効にする」を表示",
     "description": "Option to enable context menu item with label `menu_enable_extension`"
@@ -1825,17 +1996,17 @@
     "message": "画像"
   },
   "options_show_popup_subheading": {
-    "message": "ポップアップを表示する"
+    "message": "ポップアップを表示"
   },
   "options_show_popup_text_subheading": {
     "message": "テキスト"
   },
   "options_show_priority": {
-    "message": "頻度の高い（★）又はある程度の高い（☆）のマーカーを表示",
+    "message": "非常に頻出する単語（★）およびやや頻出する単語（☆）のマーカーを表示",
     "description": "Label for enabling the ★ and ☆ markers next to dictionary headwords to indicate they occur frequently  or somewhat frequently respectively"
   },
   "options_show_puck_label": {
-    "message": "丸いボタンを表示する：",
+    "message": "丸いボタンを表示：",
     "description": "Leading text for options for when to display the puck"
   },
   "options_show_puck_option_auto": {
@@ -1852,6 +2023,18 @@
   },
   "options_show_romaji": {
     "message": "ローマ字を表示"
+  },
+  "options_show_wanikani_levels": {
+    "message": "WaniKaniレベル情報を表示",
+    "description": "Label for enabling display of WaniKani level information alongside kanji headwords"
+  },
+  "options_simplified_copy": {
+    "message": "簡略化されたエントリーをコピー",
+    "description": "Heading for the section for configuring the copy to clipboard feature"
+  },
+  "options_stroke_data_source": {
+    "message": "このアプリで使用されている漢字の筆順データは、Ulrich Apel氏が著作権を有するKanjiVGプロジェクトから提供されています。このデータはCreative Commons Attribution-Share Alike 3.0ライセンスの下で提供されています。",
+    "description": "Attribution for pitch accent data as described here: https://github.com/mifunetoshiro/kanjium"
   },
   "options_tab_position_label": {
     "message": "タブ位置",
@@ -1891,6 +2074,26 @@
     "message": "天",
     "description": "Alt text for the 天 toolbar icon"
   },
+  "options_touch_enable_tap_lookup": {
+    "message": "タップでテキストを調べる",
+    "description": "Checkbox label for setting to enable looking up by tapping a word"
+  },
+  "options_unit_conversion_heading": {
+    "message": "単位換算",
+    "description": "Heading for the section for configuring unit conversion"
+  },
+  "options_units_imperial_label": {
+    "message": "ヤード・ポンド法",
+    "description": "Label for the 'imperial' drop-down item"
+  },
+  "options_units_label": {
+    "message": "単位系",
+    "description": "Label for the drop-down box for choosing the preferred units"
+  },
+  "options_units_metric_label": {
+    "message": "メートル法",
+    "description": "Label for the 'metric' drop-down item"
+  },
   "options_update_check_button_label": {
     "message": "更新を確認",
     "description": "Label for the button to check for database updates"
@@ -1917,9 +2120,33 @@
       }
     }
   },
+  "popup_bp_grammar_tag": {
+    "message": "BP N​$level$​ 文法",
+    "description": "The tag shown alongside a headword that is part of a Bunpro vocab deck indicating what level deck it is from",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "popup_bp_vocab_tag": {
+    "message": "BP N​$level$​ 単語",
+    "description": "The tag shown alongside a headword that is part of a Bunpro vocab deck indicating what level deck it is from",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
   "popup_close_label": {
     "message": "閉じる",
     "description": "The aria-label associated with the button to close the popup"
+  },
+  "popup_expand_label": {
+    "message": "展開",
+    "description": "The title associated with the button to expand the popup"
   },
   "popup_pin_label": {
     "message": "ピン留め",

@@ -1,7 +1,5 @@
-import { KanjiResult } from '@birchill/jpdict-idb';
-import browser from 'webextension-polyfill';
-
 import { DbLanguageId } from './db-languages';
+import { TranslateFunctionType } from './i18n';
 
 const SUPPORTED_REFERENCES = [
   // The radical for the kanji (number and character, from rad field)
@@ -10,6 +8,8 @@ const SUPPORTED_REFERENCES = [
   'nelson_r',
   // Kanji kentei (from misc field)
   'kk',
+  // WaniKani level (from misc field)
+  'wk',
   // Pinyin reading
   'py',
   // JLPT level (from misc field)
@@ -47,7 +47,7 @@ const SUPPORTED_REFERENCES = [
   'sh_desc',
 ] as const;
 
-export type ReferenceAbbreviation = typeof SUPPORTED_REFERENCES[number];
+export type ReferenceAbbreviation = (typeof SUPPORTED_REFERENCES)[number];
 
 export function getReferencesForLang(lang: DbLanguageId) {
   if (lang !== 'fr') {
@@ -73,6 +73,7 @@ const REFERENCE_ABBREV_MAPPING: {
   I: 'sh_desc',
   U: 'unicode',
   Y: 'py',
+  WK: 'wk',
 } as const;
 
 export function convertLegacyReference(
@@ -88,7 +89,7 @@ type NotLocalizedReferences = Exclude<
   ReferenceAbbreviation,
   LocalizedReferences
 >;
-type ReferenceLabel = { full: string; short?: string };
+type ReferenceLabel = { full: string; short?: string; lang: string };
 
 // Note that when adding or modifying labels here, it is important that the full
 // and short versions sort roughly the same so that they appear to be in
@@ -105,44 +106,62 @@ const REFERENCE_LABELS: {
   conning: {
     full: "Conning - Kodansha Kanji Learner's Course",
     short: 'Conning',
+    lang: 'en',
   },
   sh_kk2: {
     full: 'Kanji & Kana (Hadamitzky, Tuttle, 2011)',
     short: 'Kanji & Kana',
+    lang: 'en',
   },
   halpern_njecd: {
     full: 'Halpern - New Japanese-English Character Dictionary',
     short: 'Halpern',
+    lang: 'en',
   },
   halpern_kkld_2ed: {
     full: "Kanji Learner's Dictionary (Halpbern, Kodansha, 2nd ed.)",
     short: "Kanji Learner's Dictionary",
+    lang: 'en',
   },
-  heisig6: { full: 'Heisig - Rembering the Kanji (6th ed.)', short: 'Heisig' },
+  heisig6: {
+    full: 'Heisig - Rembering the Kanji (6th ed.)',
+    short: 'Heisig',
+    lang: 'en',
+  },
   henshall: {
     full: 'Henshall - A Guide to Remembering Japanese Characters',
     short: 'Henshall',
+    lang: 'en',
   },
-  busy_people: { full: 'Japanese for Busy People' },
-  kanji_in_context: { full: 'Kanji in Context' },
+  busy_people: { full: 'Japanese for Busy People', lang: 'en' },
+  kanji_in_context: { full: 'Kanji in Context', lang: 'en' },
   kodansha_compact: {
     full: 'Compact Kanji Guide (Kodansha)',
     short: 'Compact Kanji Guide',
+    lang: 'en',
   },
-  maniette: { full: 'Les Kanjis dans la tete' },
+  maniette: { full: 'Les Kanjis dans la tete', lang: 'fr' },
   nelson_c: {
     full: "Classic Nelson - Modern Reader's Japanese-English Character Dictionary",
     short: 'Classic Nelson',
+    lang: 'en',
   },
   nelson_n: {
     full: 'New Nelson Japanese-English Character Dictionary',
     short: 'New Nelson',
+    lang: 'en',
   },
-  py: { full: 'Pinyin' },
-  skip: { full: 'SKIP' },
+  py: { full: 'Pinyin', lang: 'en' },
+  skip: { full: 'SKIP', lang: 'en' },
   sh_desc: {
     full: 'The Kanji Dictionary (Spahn)',
     short: 'Kanji Dictionary',
+    lang: 'en',
+  },
+  wk: {
+    full: 'WaniKani level',
+    short: 'WaniKani',
+    lang: 'en',
   },
 } as const;
 
@@ -159,7 +178,8 @@ const REFERENCE_LABELS: {
 type ReferenceAndLabel = { ref: ReferenceAbbreviation } & ReferenceLabel;
 
 export function getReferenceLabelsForLang(
-  lang: string
+  lang: string,
+  t: TranslateFunctionType
 ): Array<ReferenceAndLabel> {
   const result: Array<ReferenceAndLabel> = [];
 
@@ -167,7 +187,7 @@ export function getReferenceLabelsForLang(
     if (lang !== 'fr' && ref === 'maniette') {
       continue;
     }
-    result.push({ ref, ...getLabelForReference(ref) });
+    result.push({ ref, ...getLabelForReference(ref, t) });
   }
 
   // Sort by short version first since this is what will be shown in the pop-up.
@@ -177,7 +197,8 @@ export function getReferenceLabelsForLang(
 }
 
 export function getSelectedReferenceLabels(
-  selectedRefs: ReadonlyArray<ReferenceAbbreviation>
+  selectedRefs: ReadonlyArray<ReferenceAbbreviation>,
+  t: TranslateFunctionType
 ): Array<ReferenceAndLabel> {
   const result: Array<ReferenceAndLabel> = [];
   const selectedRefsSet = new Set<ReferenceAbbreviation>(selectedRefs);
@@ -186,7 +207,7 @@ export function getSelectedReferenceLabels(
     if (!selectedRefsSet.has(ref)) {
       continue;
     }
-    result.push({ ref, ...getLabelForReference(ref) });
+    result.push({ ref, ...getLabelForReference(ref, t) });
   }
 
   // Sort by short version first since this is what will be shown in the pop-up.
@@ -195,79 +216,32 @@ export function getSelectedReferenceLabels(
   return result;
 }
 
-function getLabelForReference(ref: ReferenceAbbreviation): ReferenceLabel {
+function getLabelForReference(
+  ref: ReferenceAbbreviation,
+  t: TranslateFunctionType
+): ReferenceLabel {
+  const lang = t('lang_tag');
+
   switch (ref) {
     case 'radical':
-      return { full: browser.i18n.getMessage('ref_label_radical') };
+      return { full: t('ref_label_radical'), lang };
 
     case 'nelson_r':
-      return { full: browser.i18n.getMessage('ref_label_nelson_r') };
+      return { full: t('ref_label_nelson_r'), lang };
 
     case 'kk':
-      return { full: browser.i18n.getMessage('ref_label_kk') };
+      return { full: t('ref_label_kk'), lang };
 
     case 'jlpt':
-      return { full: browser.i18n.getMessage('ref_label_jlpt') };
+      return { full: t('ref_label_jlpt'), lang };
 
     case 'py':
-      return { full: browser.i18n.getMessage('ref_label_py') };
+      return { full: t('ref_label_py'), lang };
 
     case 'unicode':
-      return { full: browser.i18n.getMessage('ref_label_unicode') };
+      return { full: t('ref_label_unicode'), lang };
 
     default:
       return REFERENCE_LABELS[ref];
   }
-}
-
-export function getReferenceValue(
-  entry: KanjiResult,
-  ref: ReferenceAbbreviation
-): string {
-  switch (ref) {
-    case 'nelson_r': {
-      // If the Nelson radical is empty, it means it's the same as the regular
-      // radical so we should fall through to that branch.
-      if (entry.rad.nelson) {
-        return `${entry.rad.nelson} ${String.fromCodePoint(
-          entry.rad.nelson + 0x2eff
-        )}`;
-      }
-      // Fall through
-    }
-
-    case 'radical': {
-      const { rad } = entry;
-      const radChar = rad.base ? rad.base.b || rad.base.k : rad.b || rad.k;
-      return `${rad.x} ${radChar}`;
-    }
-
-    case 'kk':
-      return renderKanKen(entry.misc.kk);
-
-    case 'jlpt':
-      return entry.misc.jlpt ? String(entry.misc.jlpt) : '';
-
-    case 'py':
-      return entry.r.py ? entry.r.py.join(', ') : '';
-
-    case 'unicode':
-      return `U+${entry.c.codePointAt(0)!.toString(16).toUpperCase()}`;
-
-    default:
-      return entry.refs[ref] ? String(entry.refs[ref]) : '';
-  }
-}
-
-function renderKanKen(level: number | undefined): string {
-  if (!level) {
-    return '—';
-  }
-  if (level === 15) {
-    return browser.i18n.getMessage('content_kanji_kentei_level_pre', ['1']);
-  }
-  if (level === 25) {
-    return browser.i18n.getMessage('content_kanji_kentei_level_pre', ['2']);
-  }
-  return browser.i18n.getMessage('content_kanji_kentei_level', [String(level)]);
 }

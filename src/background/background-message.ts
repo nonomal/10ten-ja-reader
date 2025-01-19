@@ -11,6 +11,7 @@ export const BackgroundMessageSchema = discriminator('type', {
     id: s.optional(s.number()),
     frame: s.literal('*'),
   }),
+  dbUpdated: s.type({ frame: s.literal('*') }),
   isTopMost: s.type({ frame: s.number() }),
 
   //
@@ -60,6 +61,7 @@ export const BackgroundMessageSchema = discriminator('type', {
   clearResult: s.type({ frame: s.literal('top') }),
   nextDictionary: s.type({ frame: s.literal('top') }),
   toggleDefinition: s.type({ frame: s.literal('top') }),
+  expandPopup: s.type({ frame: s.literal('top') }),
   movePopup: s.type({
     direction: s.enums(['up', 'down']),
     frame: s.literal('top'),
@@ -81,13 +83,5 @@ export type IndividualFrameMessage =
   | Extract<BackgroundMessage, { frame: number }>
   | { type: 'popupShown'; frame: number | 'children'; state: PopupState };
 // ^ This last bit is because I'm terrible at TypeScript meta programming
-
-export type ChildFramesMessage =
-  | Extract<BackgroundMessage, { frame: 'children' }>
-  | {
-      type: 'popupShown';
-      frame: number | 'children';
-      state: PopupState;
-    };
 
 export type TopFrameMessage = Extract<BackgroundMessage, { frame: 'top' }>;

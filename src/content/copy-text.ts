@@ -1,46 +1,61 @@
-import {
-  Dialect,
-  GlossType,
-  KanjiResult,
-  LangSource,
-} from '@birchill/jpdict-idb';
-import browser from 'webextension-polyfill';
+import { Dialect, KanjiResult, LangSource } from '@birchill/jpdict-idb';
 
-import { NameResult, Sense, WordResult } from '../background/search-result';
-import { CopyType } from '../common/copy-keys';
+import type {
+  NameResult,
+  Sense,
+  WordResult,
+} from '../background/search-result';
+import type { CopyType } from '../common/copy-keys';
+import type { TranslateFunctionType } from '../common/i18n';
+import { highPriorityLabels } from '../common/priority-labels';
 import {
-  getReferenceValue,
-  getSelectedReferenceLabels,
   ReferenceAbbreviation,
+  getSelectedReferenceLabels,
 } from '../common/refs';
+
+import { getReferenceValue } from './reference-value';
 
 export type CopyEntry =
   | { type: 'word'; data: WordResult }
   | { type: 'name'; data: NameResult }
   | { type: 'kanji'; data: KanjiResult };
 
-type Headword = WordResult['k'][0] | WordResult['r'][0];
-
 export function getTextToCopy({
   entry,
   copyType,
+  getMessage,
+  includeAllSenses = true,
+  includeLessCommonHeadwords = true,
+  includePartOfSpeech = true,
   kanjiReferences = [] as Array<ReferenceAbbreviation>,
   showKanjiComponents = true,
 }: {
   entry: CopyEntry;
   copyType: CopyType;
+  getMessage: TranslateFunctionType;
+  includeAllSenses?: boolean;
+  includeLessCommonHeadwords?: boolean;
+  includePartOfSpeech?: boolean;
   kanjiReferences?: Array<ReferenceAbbreviation>;
   showKanjiComponents?: boolean;
 }): string {
   switch (copyType) {
     case 'entry':
       return getEntryToCopy(entry, {
+        getMessage,
+        includeAllSenses,
+        includeLessCommonHeadwords,
+        includePartOfSpeech,
         kanjiReferences,
         showKanjiComponents,
       });
 
     case 'tab':
       return getFieldsToCopy(entry, {
+        getMessage,
+        includeAllSenses,
+        includeLessCommonHeadwords,
+        includePartOfSpeech,
         kanjiReferences,
         showKanjiComponents,
       });
@@ -56,18 +71,17 @@ export function getWordToCopy(entry: CopyEntry): string {
   switch (entry.type) {
     case 'word':
       {
-        let headwords =
-          entry.data.k && entry.data.k.length
-            ? entry.data.k.filter((k) => !k.i?.includes('sK'))
-            : entry.data.r.filter((r) => !r.i?.includes('sk'));
+        let headwords = entry.data.k?.length
+          ? entry.data.k.filter((k) => !k.i?.includes('sK'))
+          : entry.data.r.filter((r) => !r.i?.includes('sk'));
 
         // Only show matches -- unless our only matches were search-only
         // terms -- in which case we want to include all headwords.
         if (headwords.some((h) => h.match)) {
-          headwords = headwords.filter((entry: Headword) => entry.match);
+          headwords = headwords.filter((entry) => entry.match);
         }
 
-        result = headwords.map((entry: Headword) => entry.ent).join(', ');
+        result = headwords.map((entry) => entry.ent).join(', ');
       }
       break;
 
@@ -86,12 +100,20 @@ export function getWordToCopy(entry: CopyEntry): string {
 export function getEntryToCopy(
   entry: CopyEntry,
   {
+    getMessage,
+    includeAllSenses = true,
+    includeLessCommonHeadwords = true,
+    includePartOfSpeech = true,
     kanjiReferences = [] as Array<ReferenceAbbreviation>,
     showKanjiComponents = true,
   }: {
+    getMessage: TranslateFunctionType;
+    includeAllSenses?: boolean;
+    includeLessCommonHeadwords?: boolean;
+    includePartOfSpeech?: boolean;
     kanjiReferences?: Array<ReferenceAbbreviation>;
     showKanjiComponents?: boolean;
-  } = {}
+  }
 ): string {
   let result: string;
 
@@ -99,11 +121,13 @@ export function getEntryToCopy(
     case 'word':
       {
         const kanjiHeadwords = entry.data.k
-          ? entry.data.k.filter((k) => !k.i?.includes('sK')).map((k) => k.ent)
+          ? filterRelevantKanjiHeadwords(entry.data.k, {
+              includeLessCommonHeadwords,
+            }).map((k) => k.ent)
           : [];
-        const kanaHeadwords = entry.data.r
-          .filter((r) => !r.i?.includes('sk'))
-          .map((r) => r.ent);
+        const kanaHeadwords = filterRelevantKanaHeadwords(entry.data.r, {
+          includeLessCommonHeadwords,
+        }).map((r) => r.ent);
 
         result = kanjiHeadwords.length
           ? `${kanjiHeadwords.join(', ')} [${kanaHeadwords.join(', ')}]`
@@ -112,23 +136,30 @@ export function getEntryToCopy(
           result += ` (${entry.data.romaji.join(', ')})`;
         }
 
-        result += ' ' + serializeDefinition(entry.data);
+        result +=
+          (includeAllSenses ? '\n' : ' ') +
+          serializeDefinition(entry.data, {
+            getMessage,
+            includeAllSenses,
+            includePartOfSpeech,
+            oneSensePerLine: true,
+          });
       }
       break;
 
     case 'name':
       result = entry.data.k
-        ? `${entry.data.k.join(', ')} [${entry.data.r.join(', ')}]`
-        : entry.data.r.join(', ');
+        ? `${entry.data.k.join(', ')} [${entry.data.r.join(', ')}]${includeAllSenses ? '\n' : ' '}`
+        : entry.data.r.join(', ') + (includeAllSenses ? '\n' : ' ');
 
       for (const [i, tr] of entry.data.tr.entries()) {
         if (i) {
           result += '; ';
         }
-        if (tr.type) {
-          result += ` (${tr.type.join(', ')})`;
+        if (includePartOfSpeech && tr.type) {
+          result += `(${tr.type.join(', ')}) `;
         }
-        result += ' ' + tr.det.join(', ');
+        result += tr.det.join(', ');
       }
       break;
 
@@ -145,9 +176,7 @@ export function getEntryToCopy(
           result += ` (${r.na.join('、')})`;
         }
         result += ` ${m.join(', ')}`;
-        const radicalLabel = browser.i18n.getMessage(
-          'content_kanji_radical_label'
-        );
+        const radicalLabel = getMessage('content_kanji_radical_label');
         result += `; ${radicalLabel}: ${rad.b || rad.k}（${rad.na.join(
           '、'
         )}）`;
@@ -156,15 +185,10 @@ export function getEntryToCopy(
           const baseReadings = rad.base.na.join('、');
           result +=
             ' ' +
-            browser.i18n.getMessage('content_kanji_base_radical', [
-              baseChar,
-              baseReadings,
-            ]);
+            getMessage('content_kanji_base_radical', [baseChar, baseReadings]);
         }
         if (showKanjiComponents && comp.length) {
-          const componentsLabel = browser.i18n.getMessage(
-            'content_kanji_components_label'
-          );
+          const componentsLabel = getMessage('content_kanji_components_label');
           const components: Array<string> = [];
           for (const component of comp) {
             components.push(
@@ -177,7 +201,10 @@ export function getEntryToCopy(
         }
 
         if (kanjiReferences.length) {
-          const labels = getSelectedReferenceLabels(kanjiReferences);
+          const labels = getSelectedReferenceLabels(
+            kanjiReferences,
+            getMessage
+          );
           for (const label of labels) {
             if (
               label.ref === 'nelson_r' &&
@@ -187,7 +214,7 @@ export function getEntryToCopy(
               continue;
             }
             result += `; ${label.short || label.full} ${
-              getReferenceValue(entry.data, label.ref) || '-'
+              getReferenceValue(entry.data, label.ref, getMessage) || '-'
             }`;
           }
         }
@@ -198,29 +225,107 @@ export function getEntryToCopy(
   return result!;
 }
 
-function serializeDefinition(entry: WordResult): string {
-  const senses = entry.s;
-  if (senses.length > 1) {
-    const nativeSenses = senses
-      .filter((s) => s.lang && s.lang !== 'en')
-      .map((s) => `• ${serializeSense(s)}`);
-    const enSenses = senses
-      .filter((s) => !s.lang || s.lang === 'en')
-      .map((s, index) => `(${index + 1}) ${serializeSense(s)}`);
+type KanjiHeadword = WordResult['k'][number];
 
-    return [...nativeSenses, ...enSenses].join(' ');
-  } else {
-    return serializeSense(senses[0]);
+const highPriorityLabelsSet = new Set(highPriorityLabels);
+
+function filterRelevantKanjiHeadwords(
+  headwords: Array<KanjiHeadword>,
+  {
+    includeLessCommonHeadwords,
+  }: {
+    includeLessCommonHeadwords: boolean;
   }
+) {
+  if (includeLessCommonHeadwords) {
+    return headwords.filter((k) => !k.i?.includes('sK'));
+  }
+
+  const commonHeadwords = headwords.filter(
+    (k) => !k.i?.includes('sK') && !k.i?.includes('rK')
+  );
+
+  const highPriorityHeadwords = commonHeadwords.filter((k) =>
+    k.p?.some((p) => highPriorityLabelsSet.has(p))
+  );
+  if (highPriorityHeadwords.length) {
+    return highPriorityHeadwords;
+  }
+
+  const hasPriorityHeadwords = commonHeadwords.filter((k) => k.p?.length);
+  if (hasPriorityHeadwords.length) {
+    return hasPriorityHeadwords;
+  }
+
+  return commonHeadwords;
 }
 
-const glossTypes: { [type in GlossType]: string | undefined } = {
-  [GlossType.Expl]: 'expl',
-  [GlossType.Lit]: 'lit',
-  [GlossType.Fig]: 'fig',
-  [GlossType.Tm]: 'tm',
-  [GlossType.None]: undefined,
-};
+type KanaHeadword = WordResult['r'][number];
+
+function filterRelevantKanaHeadwords(
+  headwords: Array<KanaHeadword>,
+  {
+    includeLessCommonHeadwords,
+  }: {
+    includeLessCommonHeadwords: boolean;
+  }
+) {
+  if (includeLessCommonHeadwords) {
+    return headwords.filter((k) => !k.i?.includes('sk'));
+  }
+
+  const commonHeadwords = headwords.filter(
+    (k) => !k.i?.includes('sk') && !k.i?.includes('rk')
+  );
+
+  const highPriorityHeadwords = commonHeadwords.filter((k) =>
+    k.p?.some((p) => highPriorityLabelsSet.has(p))
+  );
+  if (highPriorityHeadwords.length) {
+    return highPriorityHeadwords;
+  }
+
+  const hasPriorityHeadwords = commonHeadwords.filter((k) => k.p?.length);
+  if (hasPriorityHeadwords.length) {
+    return hasPriorityHeadwords;
+  }
+
+  return commonHeadwords;
+}
+
+function serializeDefinition(
+  entry: WordResult,
+  {
+    getMessage,
+    includeAllSenses = true,
+    includePartOfSpeech = true,
+    oneSensePerLine = false,
+  }: {
+    getMessage: TranslateFunctionType;
+    includeAllSenses?: boolean;
+    includePartOfSpeech?: boolean;
+    oneSensePerLine?: boolean;
+  }
+): string {
+  const senses = entry.s;
+  if (senses.length > 1 && includeAllSenses) {
+    const nativeSenses = senses
+      .filter((s) => s.lang && s.lang !== 'en')
+      .map(
+        (s) => `• ${serializeSense(s, { getMessage, includePartOfSpeech })}`
+      );
+    const enSenses = senses
+      .filter((s) => !s.lang || s.lang === 'en')
+      .map(
+        (s, index) =>
+          `(${index + 1}) ${serializeSense(s, { getMessage, includePartOfSpeech })}`
+      );
+
+    return [...nativeSenses, ...enSenses].join(oneSensePerLine ? '\n' : ' ');
+  } else {
+    return serializeSense(senses[0], { getMessage, includePartOfSpeech });
+  }
+}
 
 // Match the formatting in Edict
 const dialects: { [dial in Dialect]: string } = {
@@ -238,10 +343,18 @@ const dialects: { [dial in Dialect]: string } = {
   ok: 'rkb:',
 };
 
-function serializeSense(sense: Sense): string {
+function serializeSense(
+  sense: Sense,
+  {
+    getMessage,
+    includePartOfSpeech = true,
+  }: { getMessage: TranslateFunctionType; includePartOfSpeech?: boolean }
+): string {
   let result = '';
 
-  result += sense.pos ? `(${sense.pos.join(',')}) ` : '';
+  if (includePartOfSpeech && sense.pos) {
+    result += `(${sense.pos.join(',')}) `;
+  }
   result += sense.field ? `(${sense.field.join(',')}) ` : '';
   result += sense.misc ? `(${sense.misc.join(',')}) ` : '';
   result += sense.dial
@@ -253,16 +366,14 @@ function serializeSense(sense: Sense): string {
   const glosses: Array<string> = [];
   for (const g of sense.g) {
     let gloss = '';
-    if (g.type && g.type !== GlossType.Tm) {
-      const glossTypeStr = browser.i18n.getMessage(
-        `gloss_type_short_${glossTypes[g.type]}`
-      );
+    if (g.type && g.type !== 'tm' && g.type !== 'none') {
+      const glossTypeStr = getMessage(`gloss_type_short_${g.type}`);
       if (glossTypeStr) {
         gloss = `(${glossTypeStr}) `;
       }
     }
     gloss += g.str;
-    if (g.type === GlossType.Tm) {
+    if (g.type === 'tm') {
       gloss += '™';
     }
     glosses.push(gloss);
@@ -292,35 +403,50 @@ function serializeLangSrc(lsrc: LangSource) {
 export function getFieldsToCopy(
   entry: CopyEntry,
   {
+    getMessage,
+    includeAllSenses = true,
+    includeLessCommonHeadwords = true,
+    includePartOfSpeech = true,
     kanjiReferences = [] as Array<ReferenceAbbreviation>,
     showKanjiComponents = true,
   }: {
+    getMessage: TranslateFunctionType;
+    includeAllSenses?: boolean;
+    includeLessCommonHeadwords?: boolean;
+    includePartOfSpeech?: boolean;
     kanjiReferences?: Array<ReferenceAbbreviation>;
     showKanjiComponents?: boolean;
-  } = {}
+  }
 ): string {
   let result: string;
 
   switch (entry.type) {
     case 'word':
-      result =
-        entry.data.k && entry.data.k.length
-          ? entry.data.k
-              .filter((k) => !k.i?.includes('sK'))
-              .map((k) => k.ent)
-              .join('; ')
-          : '';
+      result = entry.data.k
+        ? filterRelevantKanjiHeadwords(entry.data.k, {
+            includeLessCommonHeadwords,
+          })
+            .map((k) => k.ent)
+            .join('; ')
+        : '';
       result +=
         '\t' +
-        entry.data.r
-          .filter((r) => !r.i?.includes('sk'))
+        filterRelevantKanaHeadwords(entry.data.r, {
+          includeLessCommonHeadwords,
+        })
           .map((r) => r.ent)
           .join('; ');
       if (entry.data.romaji?.length) {
         result += '\t' + entry.data.romaji.join('; ');
       }
 
-      result += '\t' + serializeDefinition(entry.data);
+      result +=
+        '\t' +
+        serializeDefinition(entry.data, {
+          getMessage,
+          includeAllSenses,
+          includePartOfSpeech,
+        });
       break;
 
     case 'name':
@@ -330,7 +456,7 @@ export function getFieldsToCopy(
           if (i) {
             definition += '; ';
           }
-          if (tr.type) {
+          if (includePartOfSpeech && tr.type) {
             definition += `(${tr.type.join(', ')}) `;
           }
           definition += tr.det.join(', ');
@@ -361,7 +487,10 @@ export function getFieldsToCopy(
           result += `\t${components}`;
         }
         if (kanjiReferences.length) {
-          const labels = getSelectedReferenceLabels(kanjiReferences);
+          const labels = getSelectedReferenceLabels(
+            kanjiReferences,
+            getMessage
+          );
           for (const label of labels) {
             // For some common types we don't produce the label
             switch (label.ref) {
@@ -372,12 +501,13 @@ export function getFieldsToCopy(
                 // unicode) or if they don't exist we want to produce an empty
                 // value (not '-') hence why we don't include the ... || '-'
                 // from the next block.
-                result += '\t' + getReferenceValue(entry.data, label.ref);
+                result +=
+                  '\t' + getReferenceValue(entry.data, label.ref, getMessage);
                 break;
 
               default:
                 result += `\t${label.short || label.full} ${
-                  getReferenceValue(entry.data, label.ref) || '-'
+                  getReferenceValue(entry.data, label.ref, getMessage) || '-'
                 }`;
                 break;
             }

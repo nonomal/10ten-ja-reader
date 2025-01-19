@@ -29,9 +29,26 @@ Thank you so much for offering to contribute! Here are a few tips that might hel
 
 ## Checking out
 
+If you have the [`gh` CLI tool](https://cli.github.com/) installed,
+you can fork and clone in one command:
+
 ```
-git clone https://github.com/birchill/10ten-ja-reader.git
-yarn install
+gh repo fork birchill/10ten-ja-reader --clone=true
+```
+
+However, because we store snapshots of the dictionary data in the repository, it
+might take a while so you might prefer a
+[blobless clone](https://github.blog/2020-12-21-get-up-to-speed-with-partial-clone-and-shallow-clone/):
+
+```
+gh repo fork birchill/10ten-ja-reader
+git clone --filter=blob:none birchill/10ten-ja-reader
+```
+
+Then install the dependencies:
+
+```
+pnpm install
 ```
 
 ## Building
@@ -39,35 +56,48 @@ yarn install
 To build the Firefox version:
 
 ```
-yarn build:firefox
+pnpm build:firefox
 ```
 
 The output should be in the `dist-firefox` folder.
 
-Similarly you can use `yarn build:chrome` or `yarn build:edge` to build the
-Chrome and Edge versions.
-The output will be in the `dist-chrome` and `dist-edge` folders respectively.
+Similarly you can use `pnpm build:chrome`, `pnpm build:edge`, `pnpm
+build:thunderbird` to build the Chrome, Edge, and Thunderbird versions.
+The output will be in the `dist-chrome`, `dist-edge`, `dist-thunderbird` folders
+respectively.
 
 To build and package up a zip:
 
 ```
-yarn package:firefox # or yarn package:chrome, yarn package:edge
+pnpm package:firefox # or pnpm package:chrome, pnpm package:edge etc.
 ```
+
+### Building on Safari
+
+First run:
+
+```
+pnpm build:safari
+```
+
+Then open Xcode and choose the `.xcodeproj` under `xcode13`.
+You will need to select the target platform (iOS vs Mac) to build.
 
 ## Running
 
 For manual testing you can use:
 
 ```
-yarn start:firefox # or yarn start:chrome
+pnpm start:firefox # or pnpm start:chrome
 ```
 
-This will run the app using the webpack runner in Firefox (or Chrome) with automatic reloading.
+This will run the app using the rspack runner in Firefox (or Chrome) with
+automatic reloading.
 
-To use a specific version of Firefox:
+To run a specific version of Firefox:
 
 ```
-yarn start:firefox --env firefox=nightly
+pnpm start:firefox --env firefox=nightly
 ```
 
 Other options include:
@@ -80,55 +110,118 @@ Other options include:
 
 (I believe the latter two options only apply to Firefox.)
 
+### Firefox for Android
+
+Instructions are [here](https://extensionworkshop.com/documentation/develop/developing-extensions-for-firefox-for-android/).
+
+Once you've set up `adb` correctly and got the device ID, you should be able to run:
+
+```
+pnpm web-ext run -t firefox-android --adb-device <device ID> --firefox-apk org.mozilla.fenix
+```
+
+That will use the version of `web-ext` installed by this project.
+
+### Safari
+
+As with the build instructions above, after running `pnpm build:safari` you
+should be able to run using Xcode.
+
+Note that Xcode will default to signing with Brian Birtles' ([@birtles](https://github.com/birtles)) team. Running on Simulator does not require a team set, but to run on a physical device, you may need to override the team name to your personal team—however, please don't commit the configuration files this will change to this repo. This is clunky, but unavoidable for open source projects with Xcode. An [Apple Developer Program](https://developer.apple.com/programs/enroll/) account may also be required.
+
+If you already have 10ten Japanese Reader installed on your device, you may get signing errors when trying to test the development version. An uninstall and reinstall should fix these.
+
 ## Testing
 
 ```
-yarn test
+pnpm test
 ```
 
 Unit tests only:
 
 ```
-yarn test:unit
+pnpm test:unit
 ```
 
 Browser-based tests only:
 
 ```
-yarn test:browser
+pnpm test:firefox
+pnpm test:chromium
 ```
+
+Running a single browser-based test in watch mode:
+
+```
+npx playwright-test tests/get-text.test.ts --browser firefox --watch
+```
+
+Unfortunately [`playwright-test`](https://github.com/hugomrdias/playwright-test)
+doesn't currently seem to let you configure multiple browsers to run at once.
+
+[`@web/test-runner`](https://modern-web.dev/docs/test-runner/overview/) does but
+it is less diligent about updating the version of Playwright meaning you end up
+testing old browsers.
 
 ## Releasing
 
-```
-yarn version --new-version 1.2.3
-# or for a pre-release version (NOTE: The 'dash' is important!)
-yarn version --new-version 1.2.3-pre1
+Pre-release checks:
 
-# Then...
-git push --follow-tags
+- If we've made changes to the build setup at all, it's good to run
+  `pnpm zip-src` and verify that the generated zip file can actually be used to
+  build the add-on for Firefox.
+
+  e.g.
+
+  ```
+  pnpm zip-src
+  mkdir ~/test-src
+  cp dist-src/10ten-ja-reader-<version>-src.zip ~/test-src/test.zip
+  cd ~/test-src
+  unzip test.zip
+  # Check it builds
+  pnpm install
+  pnpm build:firefox
+  # Check it runs
+  pnpm start:firefox
+  # Clean up
+  cd ..
+  rm -rf ~/test-src
+  ```
+
+  Otherwise the submission will likely be rejected from AMO.
+
+- It's also good to check that the release notes are being parsed correctly by
+  running `pnpm tsx scripts/release-notes.js`.
+
+We trigger releases by running the release workflow from
+[Actions](https://github.com/birchill/10ten-ja-reader/actions/workflows/release.yml).
+
+That will create a draft release that you need to publish before anything gets
+uploaded.
+
+If you need to test the release process locally, you can use:
+
+```
+pnpm release --dry-run -V
 ```
 
-If you want to bump the version _without_ triggering a new release use:
-
-```
-yarn version --new-version 1.2.3 --no-git-tag-version
-```
-
-After pushing to GitHub the release action will run and spit out a draft release.
+After publishing the release, it should automatically be uploaded to AMO
+(Firefox) and the Edge Store but we need to manually upload it to the Chrome Web
+Store and Thunderbird add-ons site.
 
 ### Releasing on Safari
 
-Safari is quite a different beast and needs to be done on a Mac.
+Releasing for Safari needs to be done on a Mac.
 
 First run:
 
 ```
-# git pull & yarn install etc.
+# git pull & pnpm install etc.
 #
-# NOTE: Make sure we've run `yarn version --new-version ...` _somewhere_
-# then pushed the result first.
-yarn build:safari
+# NOTE: Make sure we've updated version by publishing a release (see above)
+# first.
+pnpm build:safari
 ```
 
 Then:
@@ -143,7 +236,7 @@ Then:
 1. Upload.
 
 If you get `No Accounts with "App Store Connect" Access for team` at this point
-restarting XCode should fix it.
+restarting Xcode should fix it.
 
 1. (Default options for the next couple of dialogs.)
 1. Upload (again).
@@ -165,7 +258,3 @@ no hurry.
 
 After that is done, you'll need to do the same for the iOS/MacOS build depending
 on which one you did first.
-
-For iOS you _might_ need to submit a demo video. We did for the initial
-submission and were told we'd need to for every subsequent submission but on the
-next submission no-one asked for it so 🤷‍♂️

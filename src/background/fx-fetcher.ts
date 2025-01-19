@@ -1,12 +1,14 @@
 import Bugsnag from '@birchill/bugsnag-zero';
-import browser from 'webextension-polyfill';
 import * as s from 'superstruct';
+import browser from 'webextension-polyfill';
 
 import { fetchWithTimeout } from '../utils/fetch';
+import { isError } from '../utils/is-error';
 import { getReleaseStage } from '../utils/release-stage';
 
 import { getLocalFxData } from './fx-data';
-import { isError } from '../utils/is-error';
+
+declare let self: (Window | ServiceWorkerGlobalScope) & typeof globalThis;
 
 const FxDataSchema = s.type({
   timestamp: s.min(s.integer(), 0),
@@ -86,9 +88,9 @@ export class FxFetcher {
 
   private async fetchData() {
     // Don't try fetching if we are offline
-    if (!navigator.onLine) {
+    if (!self.navigator.onLine) {
       Bugsnag.leaveBreadcrumb('Deferring FX data update until we are online');
-      window.addEventListener('online', () => {
+      self.addEventListener('online', () => {
         Bugsnag.leaveBreadcrumb(
           'Fetching FX data update now that we are online'
         );
@@ -105,7 +107,7 @@ export class FxFetcher {
 
     // Abort any timeout to retry
     if (this.fetchState.type === 'waiting to retry') {
-      window.clearTimeout(this.fetchState.timeout);
+      self.clearTimeout(this.fetchState.timeout);
     }
 
     // Update our state
@@ -118,7 +120,7 @@ export class FxFetcher {
     };
 
     // Set up base URL
-    let url = 'https://data.10ten.study/fx/jpy.json';
+    let url = 'https://data.10ten.life/fx/jpy.json';
 
     // Set up query string
     const manifest = browser.runtime.getManifest();
@@ -130,6 +132,7 @@ export class FxFetcher {
     url += `?${queryParams.toString()}`;
 
     // Do the fetch
+    let fxData: s.Infer<typeof FxDataSchema> | undefined;
     try {
       const response = await fetchWithTimeout(url, {
         mode: 'cors',
@@ -145,19 +148,7 @@ export class FxFetcher {
       const result = await response.json();
       s.assert(result, FxDataSchema);
 
-      // Store the response
-      //
-      // If this fails (e.g. due to a QuotaExceededError) there's not much we
-      // can do since we communicate the FX data with other components via
-      // local storage.
-      const updated = Date.now();
-      await browser.storage.local.set({
-        fx: { ...result, updated },
-      });
-
-      // Update our local state now that everything succeeded
-      this.updated = updated;
-      this.fetchState = { type: 'idle' };
+      fxData = result;
     } catch (e: unknown) {
       // Convert network errors disguised as TypeErrors to DownloadErrors
       let error = e;
@@ -204,6 +195,26 @@ export class FxFetcher {
       } else {
         console.error(error);
         void Bugsnag.notify(error);
+        this.fetchState = { type: 'idle', didFail: true };
+      }
+    }
+
+    if (fxData) {
+      // Store the response
+      //
+      // If this fails (e.g. due to a QuotaExceededError) there's not much we
+      // can do since we communicate the FX data with other components via
+      // local storage.
+      const updated = Date.now();
+      try {
+        await browser.storage.local.set({ fx: { ...fxData, updated } });
+
+        // Update our local state now that everything succeeded
+        this.updated = updated;
+        this.fetchState = { type: 'idle' };
+      } catch {
+        // Don't report to Bugsnag because this is really common in Firefox for
+        // some reason.
         this.fetchState = { type: 'idle', didFail: true };
       }
     }
@@ -267,7 +278,7 @@ export class FxFetcher {
         );
         browser.alarms.create('fx-update', { when: nextRun });
       } catch (e) {
-        console.error(e);
+        console.error('Error creating alarm for FX data update', e);
         void Bugsnag.notify(e);
       }
     }

@@ -3,12 +3,12 @@
   <h1>10ten Japanese Reader</h1>
 
   <p>
-    Hi fellow Japanese reader! Formerly known as Rikaichamp, this browser extension lets you look up Japanese words with the hover of a mouse or tap of a screen. 
+    Hi fellow Japanese reader! Formerly known as Rikaichamp, this browser extension lets you look up Japanese words with the hover of a mouse or tap of a screen.
   </p>
 
   <p>
     <a href="https://twitter.com/10tenstudy"><img src="https://img.shields.io/twitter/follow/10tenstudy" alt="Follow @10tenstudy"></a>
-    <a href=""><img src="https://github.com/birchill/10ten-ja-reader/workflows/Automated%20tests/badge.svg" alt="automated test status" /></a>
+    <a href=""><img src="https://github.com/birchill/10ten-ja-reader/workflows/CI/badge.svg" alt="automated test status" /></a>
   </p>
 </div>
 
@@ -17,7 +17,7 @@
 - [Installing](#installing)
 - [Features](#features)
 - [Usage](#usage)
-- [Building from source](#building-from-source)
+- [Building from source](#building-a-release-from-source)
 - [Contributing](#contributing)
 - [Contributors](#contributors)
 
@@ -53,7 +53,7 @@
   <img src="https://raw.githubusercontent.com/birchill/10ten-ja-reader/main/docs/jou-conversion-cropped.png" alt="Screenshot showing translation of 四畳半 into 7.29 square meters" title="Area translation" width="640">
 
 - Recognition of a wide range of grammatical forms
-  (e.g. vs-c verbs like 兼した,
+  (e.g. irregular inflections of する-verbs like 罰せられる,
   irregular verbs like いらっしゃいます,
   continuous forms like 食べてた,
   ん as a negative form like 分からん、知らん,
@@ -129,8 +129,10 @@ following commands:
 
 ```
 export RELEASE_BUILD=1
-yarn install
-yarn package:firefox # Or `yarn package` for versions 0.5.8 and earlier
+pnpm install
+pnpm package:firefox
+# Or `yarn package:firefox` for versions 0.20.0 and earlier
+# Or `yarn package` for versions 0.5.8 and earlier
 ```
 
 (Note that you may ignore the `.js` files associated with each release.
@@ -138,12 +140,12 @@ These are published simply to provide a public URL for each version of the
 source files to associating stack traces from error reports.)
 
 The above builds the package for **Firefox**.
-Use `yarn package:chrome` to build the Chrome package, `yarn package:edge` for
-Edge, `yarn package:safari` for Safari, or `yarn package:thunderbird` for
+Use `pnpm package:chrome` to build the Chrome package, `pnpm package:edge` for
+Edge, `pnpm package:safari` for Safari, or `pnpm package:thunderbird` for
 Thunderbird.
 
-**Note:** For versions prior to and including 0.5.5 `yarn install` will try to
-install `husky` but fail so you will need to run `yarn install --ignore-scripts`.
+**Note:** For versions prior to and including 0.5.5 `pnpm install` will try to
+install `husky` but fail so you will need to run `pnpm install --ignore-scripts`.
 
 To build the latest trunk version please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -159,21 +161,29 @@ Thank you to everyone who has contributed including the following people ([emoji
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 <table>
-  <tr>
-    <td align="center"><a href="https://saltfish.moe/"><img src="https://avatars.githubusercontent.com/u/14184974?v=4?s=100" width="100px;" alt=""/><br /><sub><b>SaltfishAmi</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=SaltfishAmi" title="Code">💻</a> <a href="#translation-SaltfishAmi" title="Translation">🌍</a></td>
-    <td align="center"><a href="https://github.com/claudiofreitas"><img src="https://avatars.githubusercontent.com/u/212832?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Claudio Freitas</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=claudiofreitas" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/Kala-J"><img src="https://avatars.githubusercontent.com/u/47021172?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Kala-J</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=Kala-J" title="Code">💻</a> <a href="#data-Kala-J" title="Data">🔣</a></td>
-    <td align="center"><a href="https://github.com/ispedals"><img src="https://avatars.githubusercontent.com/u/3164681?v=4?s=100" width="100px;" alt=""/><br /><sub><b>ispedals</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=ispedals" title="Code">💻</a></td>
-    <td align="center"><a href="https://piro.sakura.ne.jp/"><img src="https://avatars.githubusercontent.com/u/70062?v=4?s=100" width="100px;" alt=""/><br /><sub><b>YUKI "Piro" Hiroshi</b></sub></a><br /><a href="#translation-piroor" title="Translation">🌍</a></td>
-    <td align="center"><a href="https://github.com/kikaxa"><img src="https://avatars.githubusercontent.com/u/96402?v=4?s=100" width="100px;" alt=""/><br /><sub><b>kikaxa</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=kikaxa" title="Code">💻</a></td>
-    <td align="center"><a href="https://nanaya.pro/"><img src="https://avatars.githubusercontent.com/u/276295?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Edho Arief</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=nanaya" title="Code">💻</a></td>
-  </tr>
-  <tr>
-    <td align="center"><a href="https://erekspeed.com/"><img src="https://avatars.githubusercontent.com/u/1176550?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Erek Speed</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=melink14" title="Code">💻</a></td>
-    <td align="center"><a href="https://birchlabs.co.uk/"><img src="https://avatars.githubusercontent.com/u/14055146?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jamie Birch</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=shirakaba" title="Code">💻</a> <a href="#ideas-shirakaba" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3Ashirakaba" title="Bug reports">🐛</a> <a href="#platform-shirakaba" title="Packaging/porting to new platform">📦</a></td>
-    <td align="center"><a href="http://stackoverflow.com/users/18771/tomalak"><img src="https://avatars.githubusercontent.com/u/28300?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Martin Böhm</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3ATomalak" title="Bug reports">🐛</a> <a href="#ideas-Tomalak" title="Ideas, Planning, & Feedback">🤔</a></td>
-    <td align="center"><a href="https://github.com/nicolasmaia"><img src="https://avatars.githubusercontent.com/u/23157217?v=4?s=100" width="100px;" alt=""/><br /><sub><b>nicolasmaia</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3Anicolasmaia" title="Bug reports">🐛</a> <a href="#ideas-nicolasmaia" title="Ideas, Planning, & Feedback">🤔</a></td>
-  </tr>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://saltfish.moe/"><img src="https://avatars.githubusercontent.com/u/14184974?v=4?s=100" width="100px;" alt="SaltfishAmi"/><br /><sub><b>SaltfishAmi</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=SaltfishAmi" title="Code">💻</a> <a href="#translation-SaltfishAmi" title="Translation">🌍</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/claudiofreitas"><img src="https://avatars.githubusercontent.com/u/212832?v=4?s=100" width="100px;" alt="Claudio Freitas"/><br /><sub><b>Claudio Freitas</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=claudiofreitas" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Kala-J"><img src="https://avatars.githubusercontent.com/u/47021172?v=4?s=100" width="100px;" alt="Kala-J"/><br /><sub><b>Kala-J</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=Kala-J" title="Code">💻</a> <a href="#data-Kala-J" title="Data">🔣</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ispedals"><img src="https://avatars.githubusercontent.com/u/3164681?v=4?s=100" width="100px;" alt="ispedals"/><br /><sub><b>ispedals</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=ispedals" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://piro.sakura.ne.jp/"><img src="https://avatars.githubusercontent.com/u/70062?v=4?s=100" width="100px;" alt="YUKI "Piro" Hiroshi"/><br /><sub><b>YUKI "Piro" Hiroshi</b></sub></a><br /><a href="#translation-piroor" title="Translation">🌍</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/kikaxa"><img src="https://avatars.githubusercontent.com/u/96402?v=4?s=100" width="100px;" alt="kikaxa"/><br /><sub><b>kikaxa</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=kikaxa" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://nanaya.pro/"><img src="https://avatars.githubusercontent.com/u/276295?v=4?s=100" width="100px;" alt="Edho Arief"/><br /><sub><b>Edho Arief</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=nanaya" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://erekspeed.com/"><img src="https://avatars.githubusercontent.com/u/1176550?v=4?s=100" width="100px;" alt="Erek Speed"/><br /><sub><b>Erek Speed</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=melink14" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://birchlabs.co.uk/"><img src="https://avatars.githubusercontent.com/u/14055146?v=4?s=100" width="100px;" alt="Jamie Birch"/><br /><sub><b>Jamie Birch</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=shirakaba" title="Code">💻</a> <a href="#ideas-shirakaba" title="Ideas, Planning, & Feedback">🤔</a> <a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3Ashirakaba" title="Bug reports">🐛</a> <a href="#platform-shirakaba" title="Packaging/porting to new platform">📦</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://stackoverflow.com/users/18771/tomalak"><img src="https://avatars.githubusercontent.com/u/28300?v=4?s=100" width="100px;" alt="Martin Böhm"/><br /><sub><b>Martin Böhm</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3ATomalak" title="Bug reports">🐛</a> <a href="#ideas-Tomalak" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/nicolasmaia"><img src="https://avatars.githubusercontent.com/u/23157217?v=4?s=100" width="100px;" alt="nicolasmaia"/><br /><sub><b>nicolasmaia</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/issues?q=author%3Anicolasmaia" title="Bug reports">🐛</a> <a href="#ideas-nicolasmaia" title="Ideas, Planning, & Feedback">🤔</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://jackarrington.com"><img src="https://avatars.githubusercontent.com/u/4681820?v=4?s=100" width="100px;" alt="Jack Arrington"/><br /><sub><b>Jack Arrington</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=StarScape" title="Code">💻</a> <a href="https://github.com/birchill/10ten-ja-reader/commits?author=StarScape" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Enellis"><img src="https://avatars.githubusercontent.com/u/6263698?v=4?s=100" width="100px;" alt="Eneas"/><br /><sub><b>Eneas</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=Enellis" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/ph0ngp"><img src="https://avatars.githubusercontent.com/u/7910929?v=4?s=100" width="100px;" alt="Phong Phan"/><br /><sub><b>Phong Phan</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=ph0ngp" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/maiself"><img src="https://avatars.githubusercontent.com/u/6334580?v=4?s=100" width="100px;" alt="Mai Lavelle"/><br /><sub><b>Mai Lavelle</b></sub></a><br /><a href="https://github.com/birchill/10ten-ja-reader/commits?author=maiself" title="Code">💻</a></td>
+    </tr>
+  </tbody>
 </table>
 
 <!-- markdownlint-restore -->

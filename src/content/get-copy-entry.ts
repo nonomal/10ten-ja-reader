@@ -1,4 +1,5 @@
 import { MajorDataSeries } from '@birchill/jpdict-idb';
+
 import { CopyEntry } from './copy-text';
 import { QueryResult } from './query';
 
@@ -20,7 +21,7 @@ export function getCopyEntryFromResult({
   } else if (series === 'names') {
     numberOfCopyableEntries = result.names?.data.length ?? 0;
   } else if (series === 'kanji') {
-    numberOfCopyableEntries = 1;
+    numberOfCopyableEntries = result.kanji?.data.length ?? 0;
   }
 
   if (!numberOfCopyableEntries) {
@@ -47,7 +48,9 @@ export function getCopyEntryFromResult({
       ? { type: 'name', data: result.names.data[wrappedIndex] }
       : null;
   } else if (series === 'kanji') {
-    return result.kanji ? { type: 'kanji', data: result.kanji.data } : null;
+    return result.kanji
+      ? { type: 'kanji', data: result.kanji.data[wrappedIndex] }
+      : null;
   }
 
   return null;

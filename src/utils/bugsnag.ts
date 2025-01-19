@@ -1,10 +1,10 @@
 import Bugsnag, {
+  Event as BugsnagEvent,
   appDuration,
   browserContext,
   browserHandledRejectionBreadcrumbs,
   browserNotifyUnhandledExceptions,
   browserNotifyUnhandledRejections,
-  Event as BugsnagEvent,
   consoleBreadcrumbs,
   deviceOrientation,
   errorBreadcrumbs,
@@ -12,11 +12,13 @@ import Bugsnag, {
   interactionBreadcrumbs,
   limitEvents,
   navigationBreadcrumbs,
+  stringifyValues,
 } from '@birchill/bugsnag-zero';
 import browser from 'webextension-polyfill';
-import { ExtensionStorageError } from '../common/extension-storage-error';
-import { isObject } from './is-object';
 
+import { ExtensionStorageError } from '../common/extension-storage-error';
+
+import { isObject } from './is-object';
 import { getReleaseStage } from './release-stage';
 
 const getExtensionInstallId = async (): Promise<string> => {
@@ -52,13 +54,13 @@ const getExtensionInstallId = async (): Promise<string> => {
   try {
     let storedInstallId = (await browser.storage.local.get('installid'))
       ?.installid;
-    if (!storedInstallId) {
+    if (typeof storedInstallId !== 'string') {
       const installId = getRandomId();
       await browser.storage.local.set({ installid: installId });
       storedInstallId = installId;
     }
 
-    return storedInstallId;
+    return storedInstallId as string;
   } catch {
     // Ignore because we are probably already in the middle of reporting an error
   }
@@ -105,6 +107,7 @@ export function startBugsnag() {
     interactionBreadcrumbs,
     limitEvents(20),
     navigationBreadcrumbs,
+    stringifyValues,
   ];
 
   if (getReleaseStage() !== 'development') {
@@ -113,7 +116,7 @@ export function startBugsnag() {
 
   Bugsnag.start({
     apiKey: 'e707c9ae84265d122b019103641e6462',
-    appVersion: (manifest as any).version_name || manifest.version,
+    appVersion: manifest.version_name || manifest.version,
     collectUserIp: false,
     onError: async (event: BugsnagEvent) => {
       // Fill out the user ID
@@ -152,11 +155,11 @@ export function startBugsnag() {
       // frames from extensions.
       //
       // See: https://docs.bugsnag.com/platforms/javascript/faq/?#how-can-i-get-error-reports-from-browser-extensions
-      const basePath = `https://github.com/birchill/10ten-ja-reader/releases/download/v${manifest.version}`;
+      const basePath = `https://github.com/birchill/10ten-ja-reader/releases/download/v${manifest.version_name || manifest.version}`;
       for (const error of event.exceptions) {
         for (const frame of error.stacktrace) {
           frame.file = frame.file.replace(
-            /^(moz-extension|chrome-extension|extension|safari-extension):\/\/[0-9a-z-]+/,
+            /^(moz-extension|chrome-extension|extension|safari-extension|safari-web-extension):\/\/[0-9a-z-]+/,
             basePath
           );
         }
@@ -177,6 +180,7 @@ export function startBugsnag() {
 
       return true;
     },
+    plugins,
   });
 }
 

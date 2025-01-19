@@ -8,7 +8,283 @@ app.
 
 ## [Unreleased]
 
-(Nothing yet)
+- Added precise conversion of Japanese era dates, including those preceding
+  the adoption of the Gregorian calendar in Japan, with accurate calculations
+  for the timespan of specific years and months
+  (e.g. 元治元年, 慶応4年閏4月, 明治5年12月2日)
+  ([#2093](https://github.com/birchill/10ten-ja-reader/pull/2093)).
+- Fixed sorting of word results
+  (see [#1966](https://github.com/birchill/10ten-ja-reader/issues/1966#issuecomment-2426690974)).
+- (Chrome) Fixed language code for Chinese localization
+  ([#2051](https://github.com/birchill/10ten-ja-reader/issues/2051)).
+- Added deinflection for -得る
+  ([#2060](https://github.com/birchill/10ten-ja-reader/pull/2060)).
+- Made the kanji references table more responsive
+  thanks to [@StarScape](https://github.com/StarScape)
+  ([#2115](https://github.com/birchill/10ten-ja-reader/pull/2115)).
+- Fixed displaying metadata in the names tab
+  ([#2129](https://github.com/birchill/10ten-ja-reader/pull/2129)).
+- Added support for characters in the
+  [Enclosed Ideographic Supplement block](https://ja.wiktionary.org/wiki/%E3%82%AB%E3%83%86%E3%82%B4%E3%83%AA:Unicode_Enclosed_Ideographic_Supplement)
+  (e.g. 🈀, 🈁, 🈴)
+  ([#2192](https://github.com/birchill/10ten-ja-reader/pull/2192)).
+
+## [1.22.0] - 2024-10-17
+
+- (Safari) added workaround for [Safari storage API
+  regression](https://bugs.webkit.org/show_bug.cgi?id=281644)
+  ([#2045](https://github.com/birchill/10ten-ja-reader/issues/2045)).
+- Added support for irregular verb forms of 揺蕩う
+  ([#1962](https://github.com/birchill/10ten-ja-reader/issues/1962)).
+- Made tap detection more reliable
+  thanks to [@maiself](https://github.com/maiself)
+  ([#2014](https://github.com/birchill/10ten-ja-reader/pull/2014)).
+- Added handling for metric suffixes on currencies (e.g. 40k円) as well as
+  "yen" suffixes (e.g. 200k yen) and "JPY" prefixes (e.g. JPY 1,000)
+  ([#2000](https://github.com/birchill/10ten-ja-reader/pull/2000)).
+- Added handling for 戶 and 內 kyūjitai.
+- Added deinflection for additional forms of -sugiru
+  ([#2033](https://github.com/birchill/10ten-ja-reader/pull/2033)).
+- Added deinflection for irregular forms of `vs-s` and `vz` class suru verbs
+  ([#2038](https://github.com/birchill/10ten-ja-reader/pull/2038)).
+- Removed deinflection of `vs-c` class verbs, as they are not used in modern
+  Japanese.
+- Fixed unreasonable matches caused by duplicates in the deinflection reason chain
+  ([#1966](https://github.com/birchill/10ten-ja-reader/issues/1966)).
+- Fixed sorting of deinflected results in some cases (e.g. 見とれる).
+- Fixed sorting when looking up kana in some cases (e.g. なる).
+
+## [1.21.1] - 2024-09-14
+
+- (Chrome,Edge) Fixed a bug in stroke animation
+- (Safari) Fixed data location
+
+## [1.21.0] - 2024-09-12
+
+- **Added stroke animations to the kanji tab**
+  ([#69](https://github.com/birchill/10ten-ja-reader/issues/69))!
+- Fixed handling of shadow DOM content in Chrome 128+ and Firefox Nightly.
+- Fixed matching of 0年
+  ([#1912](https://github.com/birchill/10ten-ja-reader/pull/1912)).
+
+## [1.20.0] - 2024-07-25
+
+- Extended the support for honorific speech
+  thanks to [@Enellis](https://github.com/Enellis)
+  ([#1822](https://github.com/birchill/10ten-ja-reader/pull/1822)).
+  - Added imperative for くださる
+  - Added addtional forms of ます
+    - たら・たり and て-form
+    - Imperative
+  - Added respectful speech
+    - Continuous form (ていらっしゃる, てらっしゃる)
+    - なさる
+    - になる
+  - Added humble speech
+    - Continuous form (ておる, とる)
+    - 致す
+  - Fixed recognition of irregular verb forms of 宣う
+- Added support for irregular verb forms of 給う
+  thanks to [@Enellis](https://github.com/Enellis)
+  ([#1470](https://github.com/birchill/10ten-ja-reader/issues/1470)).
+- Fixed recognition of continuous forms of verbs with irregular te form
+  thanks to [@Enellis](https://github.com/Enellis)
+  ([#1811](https://github.com/birchill/10ten-ja-reader/pull/1811)).
+- Added supported for doing unit conversions to imperial units
+  thanks to [@StarScape](https://github.com/StarScape)
+  ([#1836](https://github.com/birchill/10ten-ja-reader/pull/1836))
+- Added links from WaniKani annotations in the words and kanji tabs to the
+  corresponding page on the WaniKani homepage
+  ([#1876](https://github.com/birchill/10ten-ja-reader/pull/1876)).
+- Fixed a condition that could cause some preferences to be overwritten causing,
+  for example, the puck to suddenly disappear.
+- Fixed duplicate matching of names with both 新字体 and 旧字体
+  ([#1830](https://github.com/birchill/10ten-ja-reader/issues/1830)).
+- Fixed display of matches on search-only forms so they don't appear as part of
+  the entry
+  ([#1547](https://github.com/birchill/10ten-ja-reader/issues/1547)).
+
+## [1.19.1] - 2024-06-08
+
+- Added an option to use system fonts instead of bundled fonts
+  ([#1799](https://github.com/birchill/10ten-ja-reader/issues/1799)).
+- (Safari) Fixed an issue with the popup stalling when looking up words using
+  the puck
+  ([#1802](https://github.com/birchill/10ten-ja-reader/issues/1802)).
+- Fixed verb class tags being shown on proverbs
+  thanks to [@Enellis](https://github.com/Enellis)
+  ([#1469](https://github.com/birchill/10ten-ja-reader/issues/1469)).
+- Fixed kanji incorrectly encoded as radicals not being displayed in kanji tab
+  thanks to [@Enellis](https://github.com/Enellis)
+  ([#1205](https://github.com/birchill/10ten-ja-reader/issues/1205#issuecomment-1783641017)).
+
+## [1.19.0] - 2024-05-30
+
+- Made it possible to change tabs in the popup by swiping horizontally
+  thanks to [@StarScape](https://github.com/StarScape)
+  ([#1656](https://github.com/birchill/10ten-ja-reader/issues/1656)).
+- Bundled fonts used by the popup to provide consistent display and avoid issues
+  with sites that patch system fonts
+  ([#1560](https://github.com/birchill/10ten-ja-reader/issues/1560)).
+- Changed puck behavior to no longer hold the popup window like a regular
+  mouse event would
+  thanks to [@StarScape](https://github.com/StarScape)
+  ([#1767](https://github.com/birchill/10ten-ja-reader/discussions/1767)).
+- Made copying to the clipboard include rare headwords again when not using
+  simplified copy mode
+  ([#1665](https://github.com/birchill/10ten-ja-reader/issues/1665)).
+- Made the popup no longer show when tapping on text boxes and other interactive
+  elements
+  thanks to [@StarScape](https://github.com/StarScape)
+  ([#1678](https://github.com/birchill/10ten-ja-reader/issues/1678)).
+- When searching using just kana (e.g. し and ヤク), made kana matches be
+  prioritized
+  ([#1610](https://github.com/birchill/10ten-ja-reader/issues/1610)
+  [#1657](https://github.com/birchill/10ten-ja-reader/issues/1657)).
+- Fixed sorting between various deinflected results so that 進む appears before
+  進ぶ when looking up 進んでいます
+  ([#1722](https://github.com/birchill/10ten-ja-reader/issues/1722)).
+- Made the popup update after the database update is complete
+  ([#1677](https://github.com/birchill/10ten-ja-reader/issues/1677)).
+- Made senses no longer be restricted when matching on search-only headwords
+  ([#1551](https://github.com/birchill/10ten-ja-reader/issues/1551)).
+- Fixed translation of odd numbers with digits and multiple powers of ten like
+  11,786百万円
+  ([#1399](https://github.com/birchill/10ten-ja-reader/issues/1399)).
+
+## [1.18.0] - 2024-02-26
+
+- Made the puck persist its position, orientation, and active state between
+  pages
+  ([#1561](https://github.com/birchill/10ten-ja-reader/issues/1561)).
+- Updated the clipboard copy feature:
+  - Added a new setting to copy a simplified version of the entry that may be
+    more suitable for making flashcards etc.
+    ([#1305](https://github.com/birchill/10ten-ja-reader/issues/1305)).
+  - Definitions are now separated by line breaks.
+  - Rare headwords are excluded from the result unless we matched on them.
+- Fixed a case of 10ten not looking up text with ruby correctly in Ttsu reader
+  ([#1313](https://github.com/birchill/10ten-ja-reader/issues/1313)).
+- Stopped popup being inverted when Wikipedia's experimental dark mode is
+  enabled
+  ([#1590](https://github.com/birchill/10ten-ja-reader/issues/1590)).
+
+## [1.17.1] - 2024-01-04
+
+- (Chrome, Edge) Fixed support for Google Docs on chromium browsers
+  ([#1529](https://github.com/birchill/10ten-ja-reader/issues/1529)).
+- (Safari) Fixed a case where the browser tab would hang when looking up
+  text in a text field.
+- Improved rendering of source language information
+  ([#1468](https://github.com/birchill/10ten-ja-reader/issues/1468)).
+- Added localization and handling for new `rk` (rarely-used kana form) tag.
+
+## [1.17.0] - 2023-12-06
+
+- Added option to show Bunpro vocabulary and grammar labels next to words
+  ([#1383](https://github.com/birchill/10ten-ja-reader/issues/1383)).
+- Added localizations for newly-introduced field tags.
+- Fixed a bug where it would take two clicks to enable the add-on sometimes
+  ([#1491](https://github.com/birchill/10ten-ja-reader/issues/1491)).
+- Fixed slow lookup for long text spans
+  ([#1423](https://github.com/birchill/10ten-ja-reader/issues/1423)).
+- Fixed options page becoming disconnected from the background page (again).
+
+## [1.16.2] - 2023-11-28
+
+- (Chrome, Edge) Fixed online handling in currency fetching when running as a
+  service worker.
+- Made options page more robust with regards to reconnecting to the background
+  page (mostly only affects Safari).
+- (Safari) Handle `contextMenus` not being defined on iOS.
+- (Thunderbird) Made workaround for
+  [Gecko bug 1860486](https://bugzilla.mozilla.org/show_bug.cgi?id=1860486)
+  apply to Thunderbird too.
+
+## [1.16.1] - 2023-11-27
+
+- (Chrome, Edge) Removed `"scripting"` from list of permissions.
+
+## [1.16.0] - 2023-11-27
+
+- (Chrome, Edge) Enabled Manifest Version 3.
+- (Firefox, Thunderbird) Enabled non-persistent event pages.
+- (Chrome, Edge) Made the options page show up in a new tab.
+- (Safari) Fixed some bugs with the background page waking up.
+- Lookup fixes
+  - Fixed recognition of words that end in half-width numerals like 小1.
+  - Added parsing for ill-formed numbers like 39,800万円.
+  - (Firefox) Fixed lookup misbehaving on Firefox with `<textarea>`s with
+    `display: block` such as on pastebin.com
+    ([#1403](https://github.com/birchill/10ten-ja-reader/issues/1403)).
+  - Made matches on search-only headwords show the search-only version too
+    (e.g. 磨ガラス, ペイチン)
+    ([#1361](https://github.com/birchill/10ten-ja-reader/issues/1361)).
+  - Hid the "usually kana" annotation when no kanji headwords are shown
+    (also [#1361](https://github.com/birchill/10ten-ja-reader/issues/1361)).
+  - Added ability to recognize (deinflect) a few more irregular verbs like
+    ございません and くださいます
+    ([#1431](https://github.com/birchill/10ten-ja-reader/issues/1431)).
+- Keyboard fixes
+  - Added handling to avoid the <kbd>x</kbd> key being assigned to both closing
+    the popup _and_ expanding it.
+  - (Firefox, Thunderbird) Fixed the toggle key setting to allow using
+    <kbd>,</kbd>, <kbd>.</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>,
+    <kbd>PageUp</kbd>, <kbd>PageDown</kbd>, <kbd>Space</kbd>, <kbd>Insert</kbd>,
+    <kbd>Delete</kbd>, <kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>Left</kbd>,
+    and <kbd>Right</kbd>.
+  - (Firefox, Thunderbird) Made it possible to clear the toggle key.
+- Other bug fixes
+  - (Firefox) Added a workaround for a
+    [Firefox bug](https://bugzilla.mozilla.org/show_bug.cgi?id=1860486) that
+    would cause 10ten to hang when changing dictionary language.
+  - Fixed the popup changing width in some cases (e.g. when tabs are hidden and
+    scrollbars are configured to always show)
+    ([#1314](https://github.com/birchill/10ten-ja-reader/issues/1314)).
+- (Firefox) Android fixes
+  - Made the lookup puck handle taps and double-taps correctly on
+    Firefox for Android.
+  - Hid settings button in popup on Firefox for Android until
+    [bug 1795449](https://bugzilla.mozilla.org/show_bug.cgi?id=1795449) is
+    fixed.
+
+## [1.15.1] - 2023-09-03
+
+- Fixed selection styles not applying in Chrome/Edge
+  ([#1297](https://github.com/birchill/10ten-ja-reader/issues/1297)).
+
+## [1.15.0] - 2023-08-30
+
+- Collapsed the popup window to only show the most relevant results by default
+  ([#1036](https://github.com/birchill/10ten-ja-reader/issues/1036)).
+  - You can restore the old behavior by choosing "Expand all entries → Words"
+    from the settings screen.
+  - You can view other entries by scrolling the popup window or by expanding it
+    to show all entries by clicking the downward triangle button or pressing
+    <kbd>x</kbd> on the keyboard.
+- Made the popup show kanji details for all kanji in the longest matched word
+  ([#1138](https://github.com/birchill/10ten-ja-reader/issues/1138)).
+- Added a setting for changing the font size of the popup.
+- Made options page support dark mode.
+- Added an option to disable looking up by tapping on them on touchscreen devices
+  ([#1005](https://github.com/birchill/10ten-ja-reader/issues/1005)).
+- Added WaniKani data to word and kanji display
+  ([#838](https://github.com/birchill/10ten-ja-reader/issues/838)).
+  This can be enabled from the options page under the "Popup style" and
+  "Kanji dictionary" sections.
+- Added handling for kanji incorrectly encoded as radicals
+  ([#1205](https://github.com/birchill/10ten-ja-reader/issues/1205)).
+- Fixed handling of pages with `<frameset>` elements and nested `<iframe>`s
+  ([#1241](https://github.com/birchill/10ten-ja-reader/issues/1241)).
+- Fixed highlight styles on pages with strict CSP settings.
+
+## [1.14.3] - 2023-06-05 (Chrome, Edge only)
+
+- (Chrome, Edge) Fix generated source encoding to avoid Chrome bug.
+
+## [1.14.1] - 2023-06-03
+
+- Fix keyboard detection for some devices.
 
 ## [1.14.0] - 2023-04-22
 
@@ -965,7 +1241,23 @@ app.
 
 - Initial version (yes, it took me four attempts to publish).
 
-[unreleased]: https://github.com/birchill/10ten-ja-reader/compare/v1.14.0...HEAD
+[unreleased]: https://github.com/birchill/10ten-ja-reader/compare/v1.22.0...HEAD
+[1.22.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.21.1...v1.22.0
+[1.21.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.21.0...v1.21.1
+[1.21.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.20.0...v1.21.0
+[1.20.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.19.1...v1.20.0
+[1.19.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.19.0...v1.19.1
+[1.19.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.18.0...v1.19.0
+[1.18.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.17.1...v1.18.0
+[1.17.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.17.0...v1.17.1
+[1.17.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.16.2...v1.17.0
+[1.16.2]: https://github.com/birchill/10ten-ja-reader/compare/v1.16.1...v1.16.2
+[1.16.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.16.0...v1.16.1
+[1.16.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.15.1...v1.16.0
+[1.15.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.15.0...v1.15.1
+[1.15.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.14.3...v1.15.0
+[1.14.3]: https://github.com/birchill/10ten-ja-reader/compare/v1.14.1...v1.14.3
+[1.14.1]: https://github.com/birchill/10ten-ja-reader/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/birchill/10ten-ja-reader/compare/v1.13.6...v1.14.0
 [1.13.6]: https://github.com/birchill/10ten-ja-reader/compare/v1.13.5...v1.13.6
 [1.13.5]: https://github.com/birchill/10ten-ja-reader/compare/v1.12.5...v1.13.5

@@ -9,17 +9,20 @@
 //
 // * Provides a snapshot of all options with their default values filled-in for
 //   passing to the content process.
-
 import Bugsnag from '@birchill/bugsnag-zero';
 import browser from 'webextension-polyfill';
 
 import { FxLocalData, getLocalFxData } from '../background/fx-data';
 import { isObject } from '../utils/is-object';
 import { stripFields } from '../utils/strip-fields';
+import { isSafari } from '../utils/ua-utils';
 
-import {
+import type {
   AccentDisplay,
+  AutoExpandableEntry,
   ContentConfigParams,
+  FontFace,
+  FontSize,
   HighlightStyle,
   KeyboardKeys,
   PartOfSpeechDisplay,
@@ -27,10 +30,12 @@ import {
 } from './content-config-params';
 import { DbLanguageId, dbLanguages } from './db-languages';
 import { ExtensionStorageError } from './extension-storage-error';
+import { PopupKeys, StoredKeyboardKeys } from './popup-keys';
+import { PuckState } from './puck-state';
 import {
+  ReferenceAbbreviation,
   convertLegacyReference,
   getReferencesForLang,
-  ReferenceAbbreviation,
 } from './refs';
 
 // We represent the set of references that have been turned on as a series
@@ -49,21 +54,19 @@ import {
 // accurately. Anything not set should use the default setting.
 type KanjiReferenceFlagsV2 = { [key in ReferenceAbbreviation]?: boolean };
 
-// Although we separate out the keys for moving a pop-up up or down when we
-// report the keys to the content page, we store them as a single setting.
-type StoredKeyboardKeys = Omit<
-  KeyboardKeys,
-  'movePopupUp' | 'movePopupDown'
-> & {
-  movePopupDownOrUp: string[];
-};
-
 interface Settings {
   accentDisplay?: AccentDisplay;
+  autoExpand?: Array<AutoExpandableEntry>;
+  bunproDisplay?: boolean;
   contextMenuEnable?: boolean;
+  copyHeadwords?: 'common' | 'regular';
+  copyPos?: 'code' | 'none';
+  copySenses?: 'first' | 'all';
   dictLang?: DbLanguageId;
+  enableTapLookup?: boolean;
+  fontFace?: FontFace;
+  fontSize?: FontSize;
   fxCurrency?: string;
-  hasDismissedMouseOnboarding?: boolean;
   highlightStyle?: HighlightStyle;
   holdToShowKeys?: string;
   holdToShowImageKeys?: string;
@@ -71,20 +74,21 @@ interface Settings {
   keys?: Partial<StoredKeyboardKeys>;
   localSettings?: {
     canHover?: boolean;
-    hasUpgradedFromPreMouse?: boolean;
-    numLookupsWithMouseOnboarding?: number;
     popupInteractive?: boolean;
     showPuck?: 'show' | 'hide';
+    puckState?: PuckState;
   };
   noTextHighlight?: boolean;
   popupStyle?: string;
   posDisplay?: PartOfSpeechDisplay;
+  preferredUnits?: 'metric' | 'imperial';
   readingOnly?: boolean;
   showKanjiComponents?: boolean;
   showPriority?: boolean;
   showRomaji?: boolean;
   tabDisplay?: TabDisplay;
   toolbarIcon?: 'default' | 'sky';
+  waniKaniVocabDisplay?: 'hide' | 'show-matches';
 }
 
 type StorageChange = {
@@ -92,62 +96,7 @@ type StorageChange = {
   newValue?: any;
 };
 type ChangeDict = { [field: string]: StorageChange };
-type ChangeCallback = (changes: ChangeDict) => void;
-
-// A single key description. We use this definition for storing the default keys
-// since it allows storing as an array (so we can determine the order the
-// options are displayed in) and storing a description along with each key.
-interface KeySetting {
-  name: keyof StoredKeyboardKeys;
-  keys: string[];
-  enabledKeys: string[];
-  l10nKey: string;
-}
-
-export const DEFAULT_KEY_SETTINGS: KeySetting[] = [
-  {
-    name: 'nextDictionary',
-    keys: ['Shift', 'Enter', 'n'],
-    enabledKeys: ['Shift', 'Enter'],
-    l10nKey: 'options_popup_switch_dictionaries',
-  },
-  {
-    name: 'kanjiLookup',
-    keys: ['Shift'],
-    enabledKeys: [],
-    l10nKey: 'options_popup_kanji_lookup',
-  },
-  {
-    name: 'toggleDefinition',
-    keys: ['d'],
-    enabledKeys: [],
-    l10nKey: 'options_popup_toggle_definition',
-  },
-  {
-    name: 'closePopup',
-    keys: ['Esc', 'x'],
-    enabledKeys: ['Esc'],
-    l10nKey: 'options_popup_close_popup',
-  },
-  {
-    name: 'pinPopup',
-    keys: ['Alt', 'Ctrl', 'Space'],
-    enabledKeys: ['Ctrl'],
-    l10nKey: 'options_popup_pin_popup',
-  },
-  {
-    name: 'movePopupDownOrUp',
-    keys: ['j,k'],
-    enabledKeys: [],
-    l10nKey: 'options_popup_move_popup_down_or_up',
-  },
-  {
-    name: 'startCopy',
-    keys: ['c'],
-    enabledKeys: ['c'],
-    l10nKey: 'options_popup_start_copy',
-  },
-];
+export type ChangeCallback = (changes: ChangeDict) => void;
 
 // The following references were added to this extension in a later version and
 // so we turn them off by default to avoid overwhelming users with too many
@@ -157,6 +106,7 @@ const OFF_BY_DEFAULT_REFERENCES: Set<ReferenceAbbreviation> = new Set([
   'kanji_in_context',
   'kodansha_compact',
   'maniette',
+  'wk',
 ]);
 
 export class Config {
@@ -227,6 +177,33 @@ export class Config {
         console.error('Failed to upgrade kanji references settings');
       }
     }
+
+    // If we have old mouse onboarding prefs, drop them
+    if (this.settings.hasOwnProperty('hasDismissedMouseOnboarding')) {
+      try {
+        await browser.storage.sync.remove('hasDismissedMouseOnboarding');
+      } catch {
+        // Ignore
+      }
+    }
+
+    if (
+      this.settings.localSettings?.hasOwnProperty('hasUpgradedFromPreMouse') ||
+      this.settings.localSettings?.hasOwnProperty(
+        'numLookupsWithMouseOnboarding'
+      )
+    ) {
+      const localSettings = { ...this.settings.localSettings };
+      delete (localSettings as Record<string, unknown>).hasUpgradedFromPreMouse;
+      delete (localSettings as Record<string, unknown>)
+        .numLookupsWithMouseOnboarding;
+      this.settings.localSettings = localSettings;
+      try {
+        await browser.storage.local.set({ settings: localSettings });
+      } catch {
+        // Ignore
+      }
+    }
   }
 
   get ready(): Promise<void> {
@@ -234,7 +211,9 @@ export class Config {
   }
 
   private async onChange(changes: ChangeDict, areaName: string) {
-    if (areaName !== 'sync' && areaName !== 'local') {
+    // Safari bug https://bugs.webkit.org/show_bug.cgi?id=281644 means that
+    // `areaName` is undefined in Safari 18.
+    if (!isSafari() && areaName !== 'sync' && areaName !== 'local') {
       return;
     }
 
@@ -243,10 +222,18 @@ export class Config {
     await this.readSettings();
 
     // Extract the changes in a suitable form
-    const updatedChanges =
-      areaName === 'sync'
-        ? { ...changes }
-        : this.extractLocalSettingChanges(changes);
+    //
+    // We should be able to key this on `areaName` but since Safari 18 doesn't
+    // set that properly, we have to inspect the actual changes instead.
+    let updatedChanges = { ...changes };
+    if (typeof updatedChanges.settings !== 'undefined') {
+      const localSettings = updatedChanges.settings;
+      delete updatedChanges.settings;
+      updatedChanges = {
+        ...updatedChanges,
+        ...this.extractLocalSettingChanges(localSettings),
+      };
+    }
 
     // Fill in default setting values
     for (const key of Object.keys(updatedChanges)) {
@@ -276,12 +263,37 @@ export class Config {
             updatedChanges[key].newValue = this[key];
           }
           break;
+
+        // Rename the kanji reference key since the name we use to store it
+        // differs from the name we expose via our API.
+        case 'kanjiReferencesV2':
+          updatedChanges.kanjiReferences = changes.kanjiReferencesV2;
+          delete updatedChanges.kanjiReferencesV2;
+          break;
+
+        // In some cases, the pinPopup key is calculated from the holdToShowKeys
+        // value so we might need to report that too.
+        case 'holdToShowKeys':
+          // If...
+          if (
+            // We are already reporting a change to `keys`, or
+            Object.keys(updatedChanges).includes('keys') ||
+            // The pinPopup key is already explicitly set
+            this.settings.keys?.pinPopup
+          ) {
+            // ... we don't need to report a change
+            break;
+          }
+          updatedChanges.keys = { newValue: this.keys };
+          break;
       }
     }
 
     if (!Object.keys(updatedChanges).length) {
       return;
     }
+
+    Bugsnag.leaveBreadcrumb('Settings change', updatedChanges);
 
     for (const listener of this.changeListeners) {
       listener(updatedChanges);
@@ -302,13 +314,12 @@ export class Config {
   }
 
   private extractLocalSettingChanges(
-    changes: Readonly<ChangeDict>
+    settingsChange: StorageChange
   ): ChangeDict {
-    if (typeof changes.settings !== 'object' || !isObject(changes.settings)) {
+    if (!isObject(settingsChange)) {
       return {};
     }
 
-    const settingsChange = changes.settings;
     const settings = [
       ...new Set([
         ...Object.keys(settingsChange.newValue || {}),
@@ -342,6 +353,88 @@ export class Config {
     this.changeListeners.splice(index, 1);
   }
 
+  //
+  // Property accessors
+  //
+
+  // Ultimately we want to do away with all this boilerplate and use decorators
+  // to generate this code.
+  //
+  // Something like:
+  //
+  //   function syncedPref<T>(defaultValue: T) {
+  //     return (
+  //       _value: {
+  //         get: () => T;
+  //         set: (value: T) => void;
+  //       },
+  //       context: {
+  //         kind: 'accessor';
+  //         name: keyof Settings;
+  //         static: boolean;
+  //         private: boolean;
+  //         access: {
+  //           get: (object: Config) => T;
+  //           set: (object: Config, value: T) => void;
+  //         };
+  //         addInitializer(initializer: () => void): void;
+  //       }
+  //     ): {
+  //       get?: (this: Config) => T;
+  //       set?: (this: Config, value: unknown) => void;
+  //       init?: (this: Config, initialValue: T) => T;
+  //     } | void => {
+  //       return {
+  //         get: () => this.settings[context.name] ?? defaultValue,
+  //         set: (value: T) => {
+  //           if (this.settings[context.name] === value) {
+  //             return;
+  //           }
+  //
+  //           if (value === defaultValue) {
+  //             delete this.settings[context.name];
+  //             void browser.storage.sync.remove(context.name);
+  //           } else {
+  //             this.settings[context.name] = value;
+  //             void browser.storage.sync.set({ [context.name]: value });
+  //           }
+  //         },
+  //       };
+  //     };
+  //   }
+  //
+  // Usage:
+  //
+  //   @syncedPref<'common' | 'regular' | undefined>('regular')
+  //   accessor copyHeadwords: 'common' | 'regular' | undefined;
+  //
+  // (Come to think of it, once we do that each accessor will have its own
+  // storage so we can skip writing to this.settings and just use
+  // _value.get.call(this) etc.)
+  //
+  // (Also, we should make the generated getter/setter exclude `undefined` from
+  // `T`).
+  //
+  // Unfortunately, while TypeScript can transpile that, we use vitest for our
+  // unit tests which uses esbuild under the hood which doesn't yet support
+  // decorators and in any case, won't transpile them:
+  //
+  //   https://github.com/evanw/esbuild/issues/104
+  //
+  // UPDATE: Looks like support was added for decorators as of esbuild v0.21.3
+  // https://github.com/evanw/esbuild/releases/tag/v0.21.3
+  //
+  // Our options are either to use SWC (which runs the risk of behaving a bit
+  // differently to TypeScript) or try to get TSC to transpile the relevant
+  // files, e.g. using https://github.com/thomaschaaf/esbuild-plugin-tsc
+  //
+  // Unfortunately apparently vitest doesn't support esbuild plugins so that
+  // last option probably won't work.
+  //
+  // Decorators are being implemented in browsers (e.g. Firefox bug:
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=1781212) so one day they should
+  // be available in esbuild and vitest too.
+
   // accentDisplay: Defaults to binary
 
   get accentDisplay(): AccentDisplay {
@@ -362,6 +455,35 @@ export class Config {
     void browser.storage.sync.set({ accentDisplay: value });
   }
 
+  // autoExpand: Defaults to an empty array
+
+  get autoExpand(): Array<AutoExpandableEntry> {
+    return typeof this.settings.autoExpand === 'undefined'
+      ? []
+      : [...new Set(this.settings.autoExpand)];
+  }
+
+  toggleAutoExpand(type: AutoExpandableEntry, value: boolean) {
+    const enabled = new Set(this.settings.autoExpand);
+    if (value === enabled.has(type)) {
+      return;
+    }
+
+    if (value) {
+      enabled.add(type);
+    } else {
+      enabled.delete(type);
+    }
+
+    if (enabled.size) {
+      this.settings.autoExpand = [...enabled];
+      void browser.storage.sync.set({ autoExpand: [...enabled] });
+    } else {
+      delete this.settings.autoExpand;
+      void browser.storage.sync.remove('autoExpand');
+    }
+  }
+
   // canHover (local): Defaults to true
 
   get canHover(): boolean {
@@ -370,7 +492,7 @@ export class Config {
 
   set canHover(value: boolean) {
     const storedSetting = this.settings.localSettings?.canHover;
-    if (storedSetting === value) {
+    if (storedSetting === value || (storedSetting === undefined && value)) {
       return;
     }
 
@@ -382,6 +504,26 @@ export class Config {
     }
     this.settings.localSettings = localSettings;
     void browser.storage.local.set({ settings: localSettings });
+  }
+
+  // bunproDisplay: Defaults to false
+
+  get bunproDisplay(): boolean {
+    return !!this.settings.bunproDisplay;
+  }
+
+  set bunproDisplay(value: boolean) {
+    if (this.settings.bunproDisplay === (value || undefined)) {
+      return;
+    }
+
+    if (!value) {
+      delete this.settings.bunproDisplay;
+      void browser.storage.sync.remove('bunproDisplay');
+    } else {
+      this.settings.bunproDisplay = value;
+      void browser.storage.sync.set({ bunproDisplay: value });
+    }
   }
 
   // contextMenuEnable: Defaults to true
@@ -405,6 +547,66 @@ export class Config {
     void browser.storage.sync.set({ contextMenuEnable: value });
   }
 
+  // copyHeadwords: Defaults to 'regular'
+
+  get copyHeadwords(): 'common' | 'regular' {
+    return this.settings.copyHeadwords || 'regular';
+  }
+
+  set copyHeadwords(value: 'common' | 'regular') {
+    if (this.settings.copyHeadwords === value) {
+      return;
+    }
+
+    if (value === 'regular') {
+      delete this.settings.copyHeadwords;
+      void browser.storage.sync.remove('copyHeadwords');
+    } else {
+      this.settings.copyHeadwords = value;
+      void browser.storage.sync.set({ copyHeadwords: value });
+    }
+  }
+
+  // copyPos: Defaults to 'code'
+
+  get copyPos(): 'code' | 'none' {
+    return this.settings.copyPos || 'code';
+  }
+
+  set copyPos(value: 'code' | 'none') {
+    if (this.settings.copyPos === value) {
+      return;
+    }
+
+    if (value === 'code') {
+      delete this.settings.copyPos;
+      void browser.storage.sync.remove('copyPos');
+    } else {
+      this.settings.copyPos = value;
+      void browser.storage.sync.set({ copyPos: value });
+    }
+  }
+
+  // copySenses: Defaults to 'all'
+
+  get copySenses(): 'first' | 'all' {
+    return this.settings.copySenses || 'all';
+  }
+
+  set copySenses(value: 'first' | 'all') {
+    if (this.settings.copySenses === value) {
+      return;
+    }
+
+    if (value === 'all') {
+      delete this.settings.copySenses;
+      void browser.storage.sync.remove('copySenses');
+    } else {
+      this.settings.copySenses = value;
+      void browser.storage.sync.set({ copySenses: value });
+    }
+  }
+
   // dictLang: Defaults to the first match from navigator.languages found in
   // dbLanguages, or 'en' otherwise.
 
@@ -426,17 +628,23 @@ export class Config {
     // that if we later support one of the user's more preferred languages we
     // can update them automatically.
     if (value === this.getDefaultLang()) {
-      browser.storage.sync.remove('dictLang').catch(() => {
+      browser.storage.sync.remove('dictLang').catch((e) => {
         void Bugsnag.notify(
-          new ExtensionStorageError({ key: 'dictLang', action: 'remove' }),
+          new ExtensionStorageError(
+            { key: 'dictLang', action: 'remove' },
+            { cause: e }
+          ),
           { severity: 'warning' }
         );
       });
       delete this.settings.dictLang;
     } else {
-      browser.storage.sync.set({ dictLang: value }).catch(() => {
+      browser.storage.sync.set({ dictLang: value }).catch((e) => {
         void Bugsnag.notify(
-          new ExtensionStorageError({ key: 'dictLang', action: 'set' }),
+          new ExtensionStorageError(
+            { key: 'dictLang', action: 'set' },
+            { cause: e }
+          ),
           { severity: 'warning' }
         );
       });
@@ -482,6 +690,78 @@ export class Config {
       for (const listener of this.changeListeners) {
         listener(changes);
       }
+    }
+  }
+
+  // enableTapLookup: Defaults to true
+
+  get enableTapLookup(): boolean {
+    return this.settings.enableTapLookup ?? true;
+  }
+
+  set enableTapLookup(value: boolean) {
+    const storedSetting = this.settings.enableTapLookup;
+    if (storedSetting === value) {
+      return;
+    }
+
+    if (value) {
+      void browser.storage.sync.remove('enableTapLookup');
+      delete this.settings.enableTapLookup;
+    } else {
+      void browser.storage.sync.set({ enableTapLookup: value });
+      this.settings.enableTapLookup = value;
+    }
+  }
+
+  // fontFace: Defaults to 'bundled'
+
+  get fontFace(): FontFace {
+    return this.settings.fontFace === undefined
+      ? 'bundled'
+      : this.settings.fontFace;
+  }
+
+  set fontFace(value: FontFace) {
+    if (
+      (this.settings.fontFace !== undefined &&
+        this.settings.fontFace === value) ||
+      (typeof this.settings.fontFace === 'undefined' && value === 'bundled')
+    ) {
+      return;
+    }
+
+    if (value !== 'bundled') {
+      this.settings.fontFace = value;
+      void browser.storage.sync.set({ fontFace: value });
+    } else {
+      this.settings.fontFace = undefined;
+      void browser.storage.sync.remove('fontFace');
+    }
+  }
+
+  // fontSize: Defaults to normal
+
+  get fontSize(): FontSize {
+    return typeof this.settings.fontSize === 'undefined'
+      ? 'normal'
+      : this.settings.fontSize;
+  }
+
+  set fontSize(value: FontSize) {
+    if (
+      typeof this.settings.fontSize !== 'undefined' &&
+      this.settings.fontSize === value
+    ) {
+      return;
+    }
+
+    if (value === 'normal') {
+      this.settings.fontSize = undefined;
+      void browser.storage.sync.remove('fontSize');
+    } else {
+      this.settings.fontSize = value;
+      void browser.storage.sync.set({ fontSize: value });
     }
   }
 
@@ -656,7 +936,7 @@ export class Config {
   // enabledKeys member.
 
   private getDefaultEnabledKeys(): StoredKeyboardKeys {
-    return DEFAULT_KEY_SETTINGS.reduce<Partial<StoredKeyboardKeys>>(
+    return PopupKeys.reduce<Partial<StoredKeyboardKeys>>(
       (defaultKeys, setting) => {
         defaultKeys[setting.name] = setting.enabledKeys;
         return defaultKeys;
@@ -681,13 +961,31 @@ export class Config {
       const holdToShowKeys = this.holdToShowKeys?.split('+');
       if (holdToShowKeys?.length === 1) {
         const holdToShowKey = holdToShowKeys[0];
-        const availableKeys = DEFAULT_KEY_SETTINGS.find(
-          (k) => k.name === 'pinPopup'
-        );
+        const availableKeys = PopupKeys.find((k) => k.name === 'pinPopup');
         if (availableKeys?.keys.includes(holdToShowKey)) {
           keys.pinPopup = [holdToShowKey];
         }
       }
+    }
+
+    // When we first released the `expandPopup` key ('x') we didn't notice
+    // that it was already possible to assign 'x' to `closePopup`.
+    //
+    // We _could_ try to make it so that if you assign 'x' to `expandPopup` we
+    // remove it from `closePopup`. But it might be slightly more useful to
+    // allow it to be assigned to both and simply report it as being assigned to
+    // `closePopup` in that case.
+    //
+    // That has the advantages that:
+    //
+    // 1. If you go to enable it for `closePopup` and notice that doing so
+    //    clears it from `expandPopup`, you can just untick it from `closePopup`
+    //    and it will automatically be restored to `expandPopup`.
+    //
+    // 2. We need to handle the case when they're both selected anyway since
+    //    it's already possible to get it into that state in a released version.
+    if (keys.expandPopup.includes('x') && keys.closePopup.includes('x')) {
+      keys.expandPopup = keys.expandPopup.filter((k) => k !== 'x');
     }
 
     return keys;
@@ -760,19 +1058,6 @@ export class Config {
     }
     this.settings.localSettings = localSettings;
     void browser.storage.local.set({ settings: localSettings });
-
-    // We currently _don't_ set the `hasDismissedMouseOnboarding` property when
-    // the user disables interactivity using the onboarding Disable button.
-    //
-    // That's because this `popupInteractive` setting is a local setting and the
-    // user will likely _want_ the onboarding to show up on synchronized devices
-    // so they can easily click "Disable" there too.
-    //
-    // However, if they re-enable interactivity, we should make sure that flag
-    // is set so they no longer get bothered by the popup.
-    if (value) {
-      this.setHasDismissedMouseOnboarding();
-    }
   }
 
   // popupStyle: Defaults to 'default'
@@ -819,6 +1104,21 @@ export class Config {
 
     this.settings.posDisplay = value;
     void browser.storage.sync.set({ posDisplay: value });
+  }
+
+  // preferredUnits: Defaults to 'metric'
+
+  get preferredUnits(): 'metric' | 'imperial' {
+    return this.settings.preferredUnits || 'metric';
+  }
+
+  set preferredUnits(value: 'metric' | 'imperial') {
+    if (this.settings.preferredUnits === value) {
+      return;
+    }
+
+    this.settings.preferredUnits = value;
+    void browser.storage.sync.set({ preferredUnits: value });
   }
 
   // readingOnly: Defaults to false
@@ -890,15 +1190,46 @@ export class Config {
       localSettings.showPuck = value;
     }
     this.settings.localSettings = localSettings;
-    void browser.storage.local.set({ settings: localSettings });
+
+    // If value is 'hide' we should reset the puck state but since that writes
+    // to the same key in local storage we should wait for the current write to
+    // complete first.
+    void browser.storage.local.set({ settings: localSettings }).finally(() => {
+      if (value === 'hide') {
+        this.puckState = undefined;
+      }
+    });
   }
 
   get computedShowPuck(): 'show' | 'hide' {
     return this.showPuck !== 'auto'
       ? this.showPuck
       : this.canHover
-      ? 'hide'
-      : 'show';
+        ? 'hide'
+        : 'show';
+  }
+
+  // Puck state (local): Defaults to undefined
+
+  get puckState(): PuckState | undefined {
+    return this.settings.localSettings?.puckState;
+  }
+
+  set puckState(value: PuckState | undefined) {
+    const storedSetting = this.settings.localSettings?.puckState;
+    if (JSON.stringify(storedSetting) === JSON.stringify(value)) {
+      return;
+    }
+
+    const localSettings = { ...this.settings.localSettings };
+    if (!value) {
+      delete localSettings.puckState;
+    } else {
+      localSettings.puckState = value;
+    }
+    this.settings.localSettings = localSettings;
+
+    void browser.storage.local.set({ settings: localSettings });
   }
 
   // showRomaji: Defaults to false
@@ -908,15 +1239,37 @@ export class Config {
   }
 
   set showRomaji(value: boolean) {
-    if (
-      typeof this.settings.showRomaji !== 'undefined' &&
-      this.settings.showRomaji === value
-    ) {
+    if (this.settings.showRomaji === value) {
       return;
     }
 
-    this.settings.showRomaji = value;
-    void browser.storage.sync.set({ showRomaji: value });
+    if (!value) {
+      delete this.settings.showRomaji;
+      void browser.storage.sync.remove('showRomaji');
+    } else {
+      this.settings.showRomaji = value;
+      void browser.storage.sync.set({ showRomaji: value });
+    }
+  }
+
+  // waniKaniVocabDisplay: Defaults to 'hide'
+
+  get waniKaniVocabDisplay(): 'hide' | 'show-matches' {
+    return this.settings.waniKaniVocabDisplay || 'hide';
+  }
+
+  set waniKaniVocabDisplay(value: 'hide' | 'show-matches') {
+    if (this.settings.waniKaniVocabDisplay === value) {
+      return;
+    }
+
+    if (value === 'hide') {
+      delete this.settings.waniKaniVocabDisplay;
+      void browser.storage.sync.remove('waniKaniVocabDisplay');
+    } else {
+      this.settings.waniKaniVocabDisplay = value;
+      void browser.storage.sync.set({ waniKaniVocabDisplay: value });
+    }
   }
 
   // tabDisplay: Defaults to 'top'
@@ -971,56 +1324,17 @@ export class Config {
     }
   }
 
-  // Mouse onboarding-related prefs (to be removed eventually)
-
-  get hasDismissedMouseOnboarding(): boolean {
-    return !!this.settings.hasDismissedMouseOnboarding;
-  }
-
-  setHasDismissedMouseOnboarding() {
-    if (this.hasDismissedMouseOnboarding) {
-      return;
-    }
-
-    this.settings.hasDismissedMouseOnboarding = true;
-    void browser.storage.sync.set({ hasDismissedMouseOnboarding: true });
-  }
-
-  get hasUpgradedFromPreMouse(): boolean {
-    return !!this.settings.localSettings?.hasUpgradedFromPreMouse;
-  }
-
-  setHasUpgradedFromPreMouse() {
-    if (this.hasUpgradedFromPreMouse) {
-      return;
-    }
-
-    const localSettings = { ...this.settings.localSettings };
-    localSettings.hasUpgradedFromPreMouse = true;
-    this.settings.localSettings = localSettings;
-    void browser.storage.local.set({ settings: localSettings });
-  }
-
-  get numLookupsWithMouseOnboarding(): number {
-    return this.settings.localSettings?.numLookupsWithMouseOnboarding ?? 0;
-  }
-
-  incrementNumLookupsWithMouseOnboarding() {
-    const localSettings = { ...this.settings.localSettings };
-    if (localSettings.numLookupsWithMouseOnboarding) {
-      localSettings.numLookupsWithMouseOnboarding++;
-    } else {
-      localSettings.numLookupsWithMouseOnboarding = 1;
-    }
-    this.settings.localSettings = localSettings;
-    void browser.storage.local.set({ settings: localSettings });
-  }
-
   // Get all the options the content process cares about at once
   get contentConfig(): ContentConfigParams {
     return {
       accentDisplay: this.accentDisplay,
+      autoExpand: this.autoExpand,
+      bunproDisplay: this.bunproDisplay,
+      copyHeadwords: this.copyHeadwords,
+      copyPos: this.copyPos,
+      copySenses: this.copySenses,
       dictLang: this.dictLang,
+      enableTapLookup: this.enableTapLookup,
       fx:
         this.fxData && this.fxCurrency in this.fxData.rates
           ? {
@@ -1029,8 +1343,8 @@ export class Config {
               timestamp: this.fxData.timestamp,
             }
           : undefined,
-      hasDismissedMouseOnboarding: this.hasDismissedMouseOnboarding,
-      hasUpgradedFromPreMouse: this.hasUpgradedFromPreMouse,
+      fontFace: this.fontFace,
+      fontSize: this.fontSize,
       highlightStyle: this.highlightStyle,
       holdToShowKeys: this.holdToShowKeys
         ? (this.holdToShowKeys.split('+') as Array<'Ctrl' | 'Alt'>)
@@ -1044,6 +1358,8 @@ export class Config {
       popupInteractive: this.popupInteractive,
       popupStyle: this.popupStyle,
       posDisplay: this.posDisplay,
+      preferredUnits: this.preferredUnits,
+      puckState: this.puckState,
       readingOnly: this.readingOnly,
       showKanjiComponents: this.showKanjiComponents,
       showPriority: this.showPriority,
@@ -1051,6 +1367,7 @@ export class Config {
       showRomaji: this.showRomaji,
       tabDisplay: this.tabDisplay,
       toolbarIcon: this.toolbarIcon,
+      waniKaniVocabDisplay: this.waniKaniVocabDisplay,
     };
   }
 }

@@ -1,3 +1,4 @@
+/// <reference path="../common/constants.d.ts" />
 /*
 
   10ten Japanese Reader
@@ -44,83 +45,83 @@
   when modifying any of the files. - Jon
 
 */
-
 import type { MajorDataSeries } from '@birchill/jpdict-idb';
 import * as s from 'superstruct';
 import browser, { Runtime } from 'webextension-polyfill';
 
 import { BackgroundMessageSchema } from '../background/background-message';
-import { ContentConfigParams } from '../common/content-config-params';
-import { CopyKeys, CopyType } from '../common/copy-keys';
-import { isEditableNode } from '../utils/dom-utils';
 import {
-  addMarginToPoint,
-  getMarginAroundPoint,
+  AutoExpandableEntry,
+  ContentConfigParams,
+} from '../common/content-config-params';
+import { CopyKeys, CopyType } from '../common/copy-keys';
+import { isEditableNode, isInteractiveElement } from '../utils/dom-utils';
+import {
   MarginBox,
   Point,
   Rect,
+  addMarginToPoint,
+  getMarginAroundPoint,
   union,
 } from '../utils/geometry';
 import { mod } from '../utils/mod';
 import { stripFields } from '../utils/strip-fields';
 import { WithRequired } from '../utils/type-helpers';
+import { isSafari } from '../utils/ua-utils';
 
 import { copyText } from './clipboard';
+import { ContentConfig, ContentConfigChange } from './content-config';
 import { CopyEntry, getTextToCopy } from './copy-text';
 import { injectGdocsStyles, removeGdocsStyles } from './gdocs-canvas';
 import { getCopyEntryFromResult } from './get-copy-entry';
 import { getTextAtPoint } from './get-text';
 import {
+  IframeSearchParams,
+  IframeSourceParams,
   findIframeElement,
   getIframeOrigin,
   getWindowDimensions,
-  IframeSearchParams,
-  IframeSourceParams,
 } from './iframes';
+import { hasModifiers, normalizeKey, normalizeKeys } from './keyboard';
 import { SelectionMeta } from './meta';
+import { DisplayMode, PopupState, clearPopupTimeout } from './popup-state';
+import { type CopyState, getCopyMode } from './popup/copy-state';
 import {
-  getPopupDimensions,
   hidePopup,
   isPopupVisible,
-  isPopupWindowHostElem,
-  PopupOptions,
   removePopup,
-  renderPopup,
-  renderPopupArrow,
+  setFontFace,
+  setFontSize,
   setPopupStyle,
-  showOverlay,
 } from './popup/popup';
-import { CopyState, getCopyMode } from './popup/copy-state';
+import { isPopupWindowHostElem } from './popup/popup-container';
 import {
-  getPopupPosition,
-  PopupPositionConstraints,
+  type PopupPositionConstraints,
   PopupPositionMode,
-} from './popup-position';
-import { clearPopupTimeout, DisplayMode, PopupState } from './popup-state';
+} from './popup/popup-position';
+import { type ShowPopupOptions, showPopup } from './popup/show-popup';
+import { showWordsTab } from './popup/tabs';
 import {
-  isPuckMouseEvent,
   LookupPuck,
-  PuckMouseEvent,
+  PuckPointerEvent,
+  isPuckPointerEvent,
   removePuck,
 } from './puck';
-import { query, QueryResult } from './query';
-import { removeSafeAreaProvider, SafeAreaProvider } from './safe-area-provider';
-import { isForeignObjectElement, isSvgDoc, isSvgSvgElement } from './svg';
+import { QueryResult, query } from './query';
+import { SafeAreaProvider, removeSafeAreaProvider } from './safe-area-provider';
+import { getScrollOffset, toPageCoords, toScreenCoords } from './scroll-offset';
 import {
+  type SelectionSizes,
+  type TargetProps,
   getBestFitSize,
   getPageTargetProps,
   selectionSizesToScreenCoords,
-  TargetProps,
   textBoxSizeLengths,
 } from './target-props';
 import { TextHighlighter } from './text-highlighter';
 import { TextRange, textRangesEqual } from './text-range';
 import { hasReasonableTimerResolution } from './timer-precision';
 import { TouchClickTracker } from './touch-click-tracker';
-import { getScrollOffset, toPageCoords, toScreenCoords } from './scroll-offset';
-import { hasModifiers, normalizeKey, normalizeKeys } from './keyboard';
-import { isSafari } from '../utils/ua-utils';
-import { ContentConfig, ContentConfigChange } from './content-config';
 
 const enum HoldToShowKeyType {
   None = 0,
@@ -173,10 +174,10 @@ export class ContentHandler {
   private lastMouseTarget: Element | null = null;
   private lastMouseMoveScreenPoint = { x: -1, y: -1 };
 
-  // Safari-only redundant mousemove event handling
+  // Safari-only redundant pointermove/mousemove event handling
   //
-  // See notes in `onMouseMove` for why we need to do this.
-  private ignoreNextMouseMove = false;
+  // See notes in `onPointerMove` for why we need to do this.
+  private ignoreNextPointerMove = false;
 
   // Track the state of the popup
   //
@@ -259,6 +260,9 @@ export class ContentHandler {
   // Manual positioning support
   private popupPositionMode: PopupPositionMode = PopupPositionMode.Auto;
 
+  // Content collapsing
+  private isPopupExpanded = false;
+
   // Consulted in order to determine safe area
   private safeAreaProvider: SafeAreaProvider = new SafeAreaProvider();
 
@@ -269,7 +273,7 @@ export class ContentHandler {
     this.config = new ContentConfig(config);
     this.textHighlighter = new TextHighlighter();
 
-    this.onMouseMove = this.onMouseMove.bind(this);
+    this.onPointerMove = this.onPointerMove.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
@@ -281,7 +285,7 @@ export class ContentHandler {
     this.onConfigChange = this.onConfigChange.bind(this);
     this.config.addListener(this.onConfigChange);
 
-    window.addEventListener('mousemove', this.onMouseMove);
+    window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('keydown', this.onKeyDown, { capture: true });
     window.addEventListener('keyup', this.onKeyUp, { capture: true });
@@ -294,10 +298,7 @@ export class ContentHandler {
 
     this.touchClickTracker.onTouchClick = (event: MouseEvent) => {
       // Ignore clicks on interactive elements
-      if (
-        event.target instanceof HTMLAnchorElement ||
-        event.target instanceof HTMLButtonElement
-      ) {
+      if (event.target instanceof Node && isInteractiveElement(event.target)) {
         return;
       }
 
@@ -317,27 +318,32 @@ export class ContentHandler {
       // (b) the object spread operator only deals with enumerable _own_
       //     properties so we can't just spread the values from `event` into a
       //     new object, and
-      // (c) we use `getModifierState` etc. on `MouseEvent` elsewhere so we
-      //     actually need to generate a `MouseEvent` object rather than just a
-      //     property bag.
-      const mouseMoveEvent = new MouseEvent('mousemove', {
+      // (c) we use `getModifierState` etc. on `PointerEvent` elsewhere so we
+      //     actually need to generate a `PointerEvent` object rather than just
+      //     a property bag.
+      const pointerMoveEvent = new PointerEvent('pointermove', {
+        altKey: event.altKey,
         bubbles: true,
-        screenX: event.screenX,
-        screenY: event.screenY,
+        button: 0,
+        buttons: 0,
         clientX: event.clientX,
         clientY: event.clientY,
         ctrlKey: event.ctrlKey,
-        shiftKey: event.shiftKey,
-        altKey: event.altKey,
         metaKey: event.metaKey,
-        button: 0,
-        buttons: 0,
+        pointerType: 'mouse',
         relatedTarget: event.relatedTarget,
+        screenX: event.screenX,
+        screenY: event.screenY,
+        shiftKey: event.shiftKey,
       });
-      (mouseMoveEvent as TouchClickEvent).fromTouch = true;
+      (pointerMoveEvent as TouchClickEvent).fromTouch = true;
 
-      (event.target || document.body).dispatchEvent(mouseMoveEvent);
+      (event.target || document.body).dispatchEvent(pointerMoveEvent);
     };
+
+    if (!this.config.enableTapLookup) {
+      this.touchClickTracker.disable();
+    }
 
     void hasReasonableTimerResolution().then((isReasonable) => {
       if (isReasonable) {
@@ -371,8 +377,18 @@ export class ContentHandler {
 
   setUpPuck() {
     if (!this.puck) {
-      this.puck = new LookupPuck(this.safeAreaProvider, () => {
-        this.clearResult();
+      this.puck = new LookupPuck({
+        initialPosition: this.config.puckState,
+        safeAreaProvider: this.safeAreaProvider,
+        onLookupDisabled: () => {
+          this.clearResult();
+        },
+        onPuckStateChanged: (state) => {
+          void browser.runtime.sendMessage({
+            type: 'puckStateChanged',
+            value: state,
+          });
+        },
       });
     }
 
@@ -380,7 +396,9 @@ export class ContentHandler {
       icon: this.config.toolbarIcon,
       theme: this.config.popupStyle,
     });
-    this.puck.setEnabledState('active');
+    this.puck.setEnabledState(
+      this.config.puckState?.active === false ? 'inactive' : 'active'
+    );
   }
 
   tearDownPuck() {
@@ -408,8 +426,24 @@ export class ContentHandler {
         case 'showPriority':
         case 'tabDisplay':
           if (this.isTopMostWindow()) {
-            this.updatePopup({ fixPosition: true });
+            this.updatePopup();
           }
+          break;
+
+        case 'enableTapLookup':
+          if (value) {
+            this.touchClickTracker.enable();
+          } else {
+            this.touchClickTracker.disable();
+          }
+          break;
+
+        case 'fontFace':
+          setFontFace(value);
+          break;
+
+        case 'fontSize':
+          setFontSize(value);
           break;
 
         case 'showRomaji':
@@ -425,9 +459,7 @@ export class ContentHandler {
               targetProps: this.currentTargetProps,
             };
 
-            if (this.isTopMostWindow()) {
-              void this.lookupText(lookupParams);
-            }
+            void this.lookupText(lookupParams);
           }
           break;
 
@@ -435,10 +467,10 @@ export class ContentHandler {
           if (this.isTopMostWindow()) {
             // We can't use updatePopup here since it will try to re-use the
             // existing popup display mode but we specifically want to change it
-            // in this case (but, ideally, retain the same position etc.)
+            // in this case.
             this.showPopup({
+              allowOverlap: this.popupState?.pos?.allowOverlap,
               displayMode: value ? 'hover' : 'static',
-              fixPosition: true,
             });
           }
           break;
@@ -446,6 +478,12 @@ export class ContentHandler {
         case 'popupStyle':
           setPopupStyle(value);
           this.puck?.setTheme(value);
+          break;
+
+        case 'puckState':
+          if (value) {
+            this.puck?.setState(value);
+          }
           break;
 
         case 'showPuck':
@@ -463,10 +501,28 @@ export class ContentHandler {
     }
   }
 
+  onDbUpdated() {
+    // Re-trigger lookup now that the database has been updated (typically going
+    // from being in the initial updating state to the updated state).
+    if (
+      this.isTopMostWindow() &&
+      this.currentLookupParams &&
+      this.currentTargetProps
+    ) {
+      const lookupParams: Parameters<typeof this.lookupText>[0] = {
+        dictMode: 'default',
+        ...this.currentLookupParams,
+        targetProps: this.currentTargetProps,
+      };
+
+      void this.lookupText(lookupParams);
+    }
+  }
+
   detach() {
     this.config.removeListener(this.onConfigChange);
 
-    window.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('pointermove', this.onPointerMove);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('keydown', this.onKeyDown, { capture: true });
     window.removeEventListener('keyup', this.onKeyUp, { capture: true });
@@ -482,6 +538,7 @@ export class ContentHandler {
 
     this.textHighlighter.detach();
     this.copyState = { kind: 'inactive' };
+    this.isPopupExpanded = false;
     this.safeAreaProvider.destroy();
     this.touchClickTracker.destroy();
 
@@ -541,11 +598,11 @@ export class ContentHandler {
     this.frameId = frameId;
   }
 
-  onMouseMove(event: MouseEvent) {
+  onPointerMove(event: PointerEvent) {
     this.typingMode = false;
 
-    // Safari has an odd bug where it dispatches extra mousemove events when you
-    // press any modifier key (e.g. Shift).
+    // Safari has an odd bug where it dispatches extra pointermove/mousemove
+    // events when you press any modifier key (e.g. Shift).
     //
     // It goes something like this:
     //
@@ -568,23 +625,28 @@ export class ContentHandler {
     // https://bugs.webkit.org/show_bug.cgi?id=16271
     // which was apparently fixed in July 2021 but in September 2022 I can still
     // reproduce it, at least with the control key.
+    //
+    // 2023-08-03: It looks like this was finally fixed in May 2023 in
+    // https://github.com/WebKit/WebKit/pull/14221
+    // It will be some time before that's available in release Safari everywhere
+    // we care about.
     if (isSafari()) {
       if (
         (event.shiftKey ||
           event.altKey ||
           event.metaKey ||
           event.ctrlKey ||
-          this.ignoreNextMouseMove) &&
+          this.ignoreNextPointerMove) &&
         this.lastMouseMoveScreenPoint.x === event.clientX &&
         this.lastMouseMoveScreenPoint.y === event.clientY
       ) {
         // We need to ignore the mousemove event corresponding to the keyup
         // event too.
-        this.ignoreNextMouseMove = !this.ignoreNextMouseMove;
+        this.ignoreNextPointerMove = !this.ignoreNextPointerMove;
         return;
       }
 
-      this.ignoreNextMouseMove = false;
+      this.ignoreNextPointerMove = false;
     }
     this.lastMouseMoveScreenPoint = { x: event.clientX, y: event.clientY };
 
@@ -610,6 +672,19 @@ export class ContentHandler {
 
     // Ignore mouse events while buttons are being pressed.
     if (event.buttons) {
+      return;
+    }
+
+    // If we are ignoring taps, ignore events that are not from the mouse
+    //
+    // You might think, "Why don't we just listen for mousemove events in the
+    // first place?" but iOS Safari will dispatch mousemove events for touch
+    // events too (e.g. if you start to select text) and we need to ignore them
+    // so we need to know what kind of "mousemove" event we got.
+    //
+    // If we are NOT ignoring taps then we probably should allow other pointer
+    // types since it's probably useful to look up things with a pen?
+    if (!this.config.enableTapLookup && event.pointerType !== 'mouse') {
       return;
     }
 
@@ -663,7 +738,7 @@ export class ContentHandler {
     // events, not puck events.
     const contentsToMatch =
       this.getActiveHoldToShowKeys(event) |
-      (isPuckMouseEvent(event) || isTouchClickEvent(event)
+      (isPuckPointerEvent(event) || isTouchClickEvent(event)
         ? HoldToShowKeyType.All
         : 0);
     const matchText = !!(contentsToMatch & HoldToShowKeyType.Text);
@@ -717,7 +792,7 @@ export class ContentHandler {
     this.lastMouseTarget = event.target;
 
     void this.tryToUpdatePopup({
-      fromPuck: isPuckMouseEvent(event),
+      fromPuck: isPuckPointerEvent(event),
       fromTouch: isTouchClickEvent(event),
       matchText,
       matchImages,
@@ -727,8 +802,8 @@ export class ContentHandler {
     });
   }
 
-  isEnRouteToPopup(event: MouseEvent) {
-    if (isPuckMouseEvent(event) || isTouchClickEvent(event)) {
+  isEnRouteToPopup(event: PointerEvent) {
+    if (isPuckPointerEvent(event) || isTouchClickEvent(event)) {
       return false;
     }
 
@@ -850,7 +925,7 @@ export class ContentHandler {
     return true;
   }
 
-  shouldThrottlePopup(event: MouseEvent) {
+  shouldThrottlePopup(event: PointerEvent) {
     if (!this.hidePopupWhenMovingAtSpeed) {
       return false;
     }
@@ -1040,7 +1115,9 @@ export class ContentHandler {
     }
 
     const pinPopup = normalizeKeys(this.config.keys.pinPopup);
-    const key = normalizeKey(event.key);
+    // On Chrome, if we auto-fill a text box, the event.key member can be
+    // undefined.
+    const key = event.key ? normalizeKey(event.key) : '';
     if (pinPopup.includes(key)) {
       if (this.pinToggleState === 'keydown' && this.togglePin()) {
         event.preventDefault();
@@ -1066,6 +1143,7 @@ export class ContentHandler {
     const [
       nextDictionary,
       toggleDefinition,
+      expandPopup,
       closePopup,
       pinPopup,
       movePopupUp,
@@ -1074,6 +1152,7 @@ export class ContentHandler {
     ] = [
       normalizeKeys(keys.nextDictionary),
       normalizeKeys(keys.toggleDefinition),
+      normalizeKeys(keys.expandPopup),
       normalizeKeys(keys.closePopup),
       normalizeKeys(keys.pinPopup),
       normalizeKeys(keys.movePopupUp),
@@ -1124,6 +1203,8 @@ export class ContentHandler {
       }
     } else if (this.copyState.kind !== 'inactive' && key === 'ESC') {
       this.exitCopyMode();
+    } else if (expandPopup.includes(key)) {
+      this.expandPopup();
     }
     // This needs to come _after_ the above check so that if the user has
     // configured Escape to close the popup but they are in copy mode, we first
@@ -1200,7 +1281,7 @@ export class ContentHandler {
 
   // Test if hold-to-show keys are set for a given a UI event
   getActiveHoldToShowKeys(
-    event: MouseEvent | KeyboardEvent
+    event: PointerEvent | KeyboardEvent
   ): HoldToShowKeyType {
     const areKeysDownForSetting = (
       setting: 'holdToShowKeys' | 'holdToShowImageKeys'
@@ -1237,7 +1318,7 @@ export class ContentHandler {
     );
   }
 
-  hasPinKeysPressed(event: MouseEvent): boolean {
+  hasPinKeysPressed(event: PointerEvent): boolean {
     const pinPopupKeys = this.config.keys.pinPopup;
     const hasAltGraph = event.getModifierState('AltGraph');
     return (
@@ -1289,13 +1370,14 @@ export class ContentHandler {
     event.preventDefault();
 
     const { clientX, clientY } = event.data;
-    const mouseEvent = new MouseEvent('mousemove', {
+    const pointerEvent = new PointerEvent('pointermove', {
       // Make sure the event bubbles up to the listener on the window
       bubbles: true,
       clientX,
       clientY,
+      pointerType: 'mouse',
     });
-    (mouseEvent as PuckMouseEvent).fromPuck = true;
+    (pointerEvent as PuckPointerEvent).fromPuck = true;
 
     const documentBody = window.self.document.body;
     if (!documentBody) {
@@ -1303,7 +1385,7 @@ export class ContentHandler {
       return;
     }
 
-    documentBody.dispatchEvent(mouseEvent);
+    documentBody.dispatchEvent(pointerEvent);
   }
 
   async onBackgroundMessage(request: unknown): Promise<string> {
@@ -1355,7 +1437,7 @@ export class ContentHandler {
 
           // We don't need to worry about clearing any timeout that may have
           // been set in `this.popupState.ghost.timeout` because that timeout
-          // is cleared by the top-most window (which we are are not).
+          // is cleared by the top-most window (which we are not).
           this.popupState = { ...request.state, pos };
         }
         break;
@@ -1364,6 +1446,7 @@ export class ContentHandler {
         this.currentTextRange = undefined;
         this.currentPagePoint = undefined;
         this.copyState = { kind: 'inactive' };
+        this.isPopupExpanded = false;
         this.popupState = undefined;
         break;
 
@@ -1399,7 +1482,7 @@ export class ContentHandler {
 
           let iframeOriginPoint;
           if (!iframe) {
-            console.warn("Couldn't find iframe element");
+            console.warn("[10ten-ja-reader] Couldn't find iframe element");
             // Just use the top-left corner since that's probably better than
             // not showing the popup at all.
             iframeOriginPoint = { x: 0, y: 0 };
@@ -1475,6 +1558,10 @@ export class ContentHandler {
         this.toggleDefinition();
         break;
 
+      case 'expandPopup':
+        this.expandPopup();
+        break;
+
       case 'movePopup':
         this.movePopup(request.direction);
         break;
@@ -1520,6 +1607,20 @@ export class ContentHandler {
     this.updatePopup();
   }
 
+  expandPopup() {
+    if (!this.isTopMostWindow()) {
+      void browser.runtime.sendMessage({ type: 'top:expandPopup' });
+      return;
+    }
+
+    if (this.isPopupExpanded) {
+      return;
+    }
+
+    this.isPopupExpanded = true;
+    this.updatePopup({ allowOverlap: true, fixPosition: true });
+  }
+
   movePopup(direction: 'up' | 'down') {
     if (!this.isTopMostWindow()) {
       void browser.runtime.sendMessage({ type: 'top:movePopup', direction });
@@ -1558,19 +1659,19 @@ export class ContentHandler {
     if (!this.isTopMostWindow()) {
       console.assert(
         trigger === 'keyboard',
-        "We probably should't be receiving touch or mouse events in the iframe"
+        "[10ten-ja-reader] We probably should't be receiving touch or mouse events in the iframe"
       );
       void browser.runtime.sendMessage({ type: 'top:enterCopyMode' });
       return;
     }
 
-    this.updatePopup({ fixPosition: true });
+    this.updatePopup({ allowOverlap: true, fixPosition: true });
   }
 
   exitCopyMode() {
-    // Use the existing copyState to determine if we need to maintain a minimum
-    // size for the popup.
-    const fixMinHeight = this.shouldFixMinHeightForCopyMode();
+    // Use the existing copyState to determine if we need to maintain the popup
+    // size and position.
+    const fixPopup = this.shouldFixPopupWhenExitingCopyMode();
 
     // As with enterCopyMode, we mirror the copyMode state in both iframe and
     // topmost window.
@@ -1581,10 +1682,10 @@ export class ContentHandler {
       return;
     }
 
-    this.updatePopup({ fixPosition: true, fixMinHeight });
+    this.updatePopup({ fixPosition: fixPopup, fixMinHeight: fixPopup });
   }
 
-  private shouldFixMinHeightForCopyMode() {
+  private shouldFixPopupWhenExitingCopyMode() {
     return (
       getCopyMode(this.copyState) === 'mouse' &&
       // If the popup is pinned, there's no need to fix the height
@@ -1625,6 +1726,10 @@ export class ContentHandler {
     const textToCopy = getTextToCopy({
       entry: copyEntry,
       copyType,
+      getMessage: browser.i18n.getMessage.bind(browser.i18n),
+      includeAllSenses: this.config.copySenses !== 'first',
+      includePartOfSpeech: this.config.copyPos !== 'none',
+      includeLessCommonHeadwords: this.config.copyHeadwords !== 'common',
       kanjiReferences: this.config.kanjiReferences,
       showKanjiComponents: this.config.showKanjiComponents,
     });
@@ -1634,7 +1739,7 @@ export class ContentHandler {
 
   private getCopyEntry(): CopyEntry | null {
     if (this.copyState.kind !== 'active') {
-      console.error('Expected to be in copy mode');
+      console.error('[10ten-ja-reader] Expected to be in copy mode');
       return null;
     }
 
@@ -1648,9 +1753,9 @@ export class ContentHandler {
       index: this.copyState.index,
     });
     if (!copyEntry) {
-      const fixMinHeight = this.shouldFixMinHeightForCopyMode();
+      const fixPopup = this.shouldFixPopupWhenExitingCopyMode();
       this.copyState = { kind: 'inactive' };
-      this.updatePopup({ fixPosition: true, fixMinHeight });
+      this.updatePopup({ fixPosition: fixPopup, fixMinHeight: fixPopup });
     }
 
     return copyEntry;
@@ -1661,7 +1766,7 @@ export class ContentHandler {
       return;
     }
 
-    const fixMinHeight = this.shouldFixMinHeightForCopyMode();
+    const fixPopup = this.shouldFixPopupWhenExitingCopyMode();
     const { index, mode } = this.copyState;
     try {
       await copyText(message);
@@ -1671,7 +1776,7 @@ export class ContentHandler {
       this.copyState = { kind: 'error', index, mode };
     }
 
-    this.updatePopup({ fixPosition: true, fixMinHeight });
+    this.updatePopup({ fixPosition: fixPopup, fixMinHeight: fixPopup });
 
     // Reset the copy state so that it doesn't re-appear next time we re-render
     // the popup.
@@ -1870,8 +1975,12 @@ export class ContentHandler {
     // Presumably the text or dictionary has changed so break out of copy mode
     this.copyState = { kind: 'inactive' };
 
+    // Likewise reset the expanded state
+    this.isPopupExpanded = false;
+
     const queryResult = await query(text, {
       includeRomaji: this.config.showRomaji,
+      metaMatchLen: meta?.matchLen,
       wordLookup,
       updateQueryResult: (queryResult: QueryResult | null) => {
         void this.applyQueryResult({
@@ -1933,17 +2042,8 @@ export class ContentHandler {
     if (queryResult) {
       switch (dictMode) {
         case 'default':
-          if (!queryResult.words) {
-            // Prefer the names dictionary if we have a names result of more
-            // than one character or if we have no kanji results.
-            //
-            // Otherwise, follow the usual fallback order words -> kanji ->
-            // names.
-            dict =
-              (queryResult.names && queryResult.names.matchLen > 1) ||
-              !queryResult.kanji
-                ? 'names'
-                : 'kanji';
+          if (!showWordsTab(queryResult, !!meta)) {
+            dict = queryResult.names ? 'names' : 'kanji';
           }
           break;
 
@@ -1967,7 +2067,7 @@ export class ContentHandler {
   }
 
   showDictionary(
-    dictToShow: 'next' | MajorDataSeries,
+    dictToShow: 'next' | 'prev' | MajorDataSeries,
     options: { fixPopupPosition?: boolean } = {}
   ) {
     if (!this.currentSearchResult) {
@@ -1975,19 +2075,44 @@ export class ContentHandler {
     }
 
     let dict: MajorDataSeries;
+    const cycleOrder: Array<MajorDataSeries> = ['words', 'kanji', 'names'];
 
-    if (dictToShow == 'next') {
+    if (dictToShow === 'next') {
       dict = this.currentDict;
 
-      const cycleOrder: Array<MajorDataSeries> = ['words', 'kanji', 'names'];
       let next = (cycleOrder.indexOf(this.currentDict) + 1) % cycleOrder.length;
       while (cycleOrder[next] !== this.currentDict) {
         const nextDict = cycleOrder[next];
-        if (this.currentSearchResult[nextDict]) {
+        if (
+          this.currentSearchResult[nextDict] ||
+          (nextDict === 'words' &&
+            showWordsTab(
+              this.currentSearchResult,
+              !!this.currentLookupParams?.meta
+            ))
+        ) {
           dict = nextDict;
           break;
         }
         next = ++next % cycleOrder.length;
+      }
+    } else if (dictToShow === 'prev') {
+      dict = this.currentDict;
+
+      let prev = mod(
+        cycleOrder.indexOf(this.currentDict) - 1,
+        cycleOrder.length
+      );
+      while (cycleOrder[prev] !== this.currentDict) {
+        const prevDict = cycleOrder[prev];
+        if (
+          this.currentSearchResult[prevDict] ||
+          (prevDict === 'words' && !!this.currentLookupParams?.meta)
+        ) {
+          dict = prevDict;
+          break;
+        }
+        prev = mod(--prev, cycleOrder.length);
       }
     } else {
       dict = dictToShow;
@@ -2002,8 +2127,14 @@ export class ContentHandler {
     // Exit copy state if we are changing tabs
     this.copyState = { kind: 'inactive' };
 
+    // Reset expanded state since we are changing tabs
+    this.isPopupExpanded = false;
+
     this.highlightTextForCurrentResult();
-    this.updatePopup({ fixPosition: options?.fixPopupPosition });
+    this.updatePopup({
+      allowOverlap: options?.fixPopupPosition,
+      fixPosition: options?.fixPopupPosition,
+    });
   }
 
   highlightTextForCurrentResult() {
@@ -2045,6 +2176,7 @@ export class ContentHandler {
 
   showPopup(
     options: {
+      allowOverlap?: boolean;
       displayMode?: DisplayMode;
       fixPosition?: boolean;
       fixMinHeight?: boolean;
@@ -2060,59 +2192,56 @@ export class ContentHandler {
       return;
     }
 
+    const allowOverlap = options.allowOverlap || false;
     const displayMode =
       options.displayMode || this.getInitialDisplayMode('ghost');
 
-    // Determine if we should show the mouse onboarding
-    const wasTriggeredByMouse =
-      this.currentTargetProps &&
-      !this.currentTargetProps.fromPuck &&
-      !this.currentTargetProps.fromTouch;
-    const showMouseOnboarding =
-      this.config.popupInteractive &&
-      !this.config.hasDismissedMouseOnboarding &&
-      this.config.hasUpgradedFromPreMouse &&
-      wasTriggeredByMouse;
+    // Precalculate the selection sizes
+    const { textBoxSizes: pageTextBoxSizes } = this.currentTargetProps || {};
+    const screenTextBoxSizes = selectionSizesToScreenCoords(pageTextBoxSizes);
 
-    const onDismissMouseOnboarding = showMouseOnboarding
-      ? (options?: { disable?: true }) => {
-          // We _don't_ set the "dismissed mouse onboarding" flag when the user
-          // clicks the "Disable" button because the `popupInteractive` setting
-          // is a local setting (i.e. not synced) and the user will likely want to
-          // see the Disable onboarding button on any synchronized devices so
-          // they can disable mouse interaction there too.
-          //
-          // Instead, we rely on the fact that we only show the onboarding when
-          // interactivity is enabled and if the user _re-enables_ interactivity
-          // we will make sure the "dismissed mouse onboarding" flag gets set
-          // then.
-          if (!options?.disable) {
-            void browser.runtime.sendMessage({
-              type: 'dismissedMouseOnboarding',
-            });
-          }
-
-          if (options?.disable) {
-            void browser.runtime.sendMessage({
-              type: 'disableMouseInteraction',
-            });
-          }
-        }
-      : undefined;
-
-    const popupOptions: PopupOptions = {
+    const popupOptions: ShowPopupOptions = {
+      allowOverlap: options.allowOverlap,
       accentDisplay: this.config.accentDisplay,
+      bunproDisplay: this.config.bunproDisplay,
       closeShortcuts: this.config.keys.closePopup,
+      copy: {
+        includeAllSenses: this.config.copySenses !== 'first',
+        includePartOfSpeech: this.config.copyPos !== 'none',
+        includeLessCommonHeadwords: this.config.copyHeadwords !== 'common',
+      },
       copyNextKey: this.config.keys.startCopy[0] || '',
       copyState: this.copyState,
       dictLang: this.config.dictLang,
       dictToShow: this.currentDict,
       displayMode,
+      fixedPosition: options?.fixPosition ? this.getFixedPosition() : undefined,
+      fixMinHeight: options.fixMinHeight,
+      fontFace: this.config.fontFace,
+      fontSize: this.config.fontSize,
       fxData: this.config.fx,
+      getCursorClearanceAndPos: this.getCursorClearanceAndPos.bind(
+        this,
+        screenTextBoxSizes
+      ),
+      expandShortcuts: this.config.keys.expandPopup,
+      interactive: this.config.popupInteractive,
+      isExpanded:
+        this.isPopupExpanded ||
+        this.config.autoExpand.includes(
+          this.currentDict as AutoExpandableEntry
+        ) ||
+        // When selecting items by keyboard, expand the content so the user can
+        // see what else is available to select, but not for kanji since it
+        // would make the window massive.
+        (this.copyState.kind === 'active' &&
+          this.copyState.mode === 'keyboard' &&
+          this.currentDict !== 'kanji'),
+      isVerticalText: !!this.currentTargetProps?.isVerticalText,
       kanjiReferences: this.config.kanjiReferences,
       meta: this.currentLookupParams?.meta,
       onCancelCopy: () => this.exitCopyMode(),
-      onDismissMouseOnboarding,
+      onExpandPopup: () => this.expandPopup(),
       onStartCopy: (index: number, trigger: 'touch' | 'mouse') =>
         this.enterCopyMode({ trigger, index }),
       onCopy: (copyType: CopyType) => this.copyCurrentEntry(copyType),
@@ -2124,28 +2253,38 @@ export class ContentHandler {
           // Ignore
         });
       },
-      onSwitchDictionary: (dict: MajorDataSeries) => {
+      onSwitchDictionary: (dict: MajorDataSeries | 'next' | 'prev') => {
         this.showDictionary(dict, { fixPopupPosition: true });
       },
       onTogglePin: () => {
-        displayMode === 'pinned' ? this.unpinPopup() : this.pinPopup();
+        if (displayMode === 'pinned') {
+          this.unpinPopup();
+        } else {
+          this.pinPopup();
+        }
       },
       pinShortcuts: this.config.keys.pinPopup,
+      pointerType: this.currentTargetProps?.fromPuck ? 'puck' : 'cursor',
       popupStyle: this.config.popupStyle,
       posDisplay: this.config.posDisplay,
+      positionMode: this.popupPositionMode,
+      preferredUnits: this.config.preferredUnits,
+      previousHeight: this.popupState?.pos?.height,
+      safeArea: this.safeAreaProvider.getSafeArea(),
       showDefinitions: !this.config.readingOnly,
       showKanjiComponents: this.config.showKanjiComponents,
-      showMouseOnboarding,
       showPriority: this.config.showPriority,
       switchDictionaryKeys: this.config.keys.nextDictionary,
       tabDisplay: this.config.tabDisplay,
+      waniKaniVocabDisplay: this.config.waniKaniVocabDisplay,
     };
 
-    const popup = renderPopup(this.currentSearchResult, popupOptions);
-    if (!popup) {
+    const showPopupResult = showPopup(this.currentSearchResult, popupOptions);
+    if (!showPopupResult) {
       this.clearResult({ currentElement: this.lastMouseTarget });
       return;
     }
+    const { size: popupSize, pos: popupPos } = showPopupResult;
 
     // Inform the touch click tracker to ignore taps since the popup is now
     // showing.
@@ -2154,12 +2293,53 @@ export class ContentHandler {
     // callback since by that point we will already have hidden it.
     this.touchClickTracker.startIgnoringClicks();
 
+    // Store the popup's display mode so that:
     //
-    // Position the popup
+    // (a) we can fix the popup's position when changing tabs, and
+    // (b) we can detect if future mouse events lie between the popup and
+    //     the lookup point (and _not_ close or update the popup in that case)
+    // (c) we know how to handle keyboard events based on whether or not the
+    //     popup is showing
+
+    clearPopupTimeout(this.popupState);
+
+    this.popupState = {
+      pos: {
+        frameId: this.getFrameId() || 0,
+        x: popupPos.x,
+        y: popupPos.y,
+        width: popupSize.width,
+        height: popupSize.height,
+        direction: popupPos.direction,
+        side: popupPos.side,
+        allowOverlap,
+        lookupPoint: this.getPopupLookupPoint({
+          currentPagePoint: this.currentPagePoint,
+          firstCharBbox: screenTextBoxSizes?.[1],
+        }),
+      },
+      contentType: this.currentTargetProps?.contentType || 'text',
+      display: this.getNextDisplay(displayMode),
+    };
+
     //
+    // Tell child iframes
+    //
+    let childState = this.popupState!;
+    if (this.currentLookupParams?.source) {
+      childState = this.getTranslatedPopupState(
+        this.currentLookupParams.source,
+        this.popupState
+      );
+    }
 
-    // First work out our constraints, i.e. where _not_ to put the popup
+    void browser.runtime.sendMessage({
+      type: 'children:popupShown',
+      state: childState,
+    });
+  }
 
+  getCursorClearanceAndPos(screenTextBoxSizes: SelectionSizes | undefined) {
     const cursorPos = this.currentPagePoint
       ? toScreenCoords(this.currentPagePoint)
       : undefined;
@@ -2193,10 +2373,6 @@ export class ContentHandler {
     // We don't want to add _all_ of it since we might have a selection that
     // wraps lines and that would produce a massive area that would be too hard
     // to avoid.
-    const { textBoxSizes: pageTextBoxSizes } = this.currentTargetProps || {};
-    const screenTextBoxSizes = selectionSizesToScreenCoords(pageTextBoxSizes);
-
-    const isVerticalText = !!this.currentTargetProps?.isVerticalText;
     if (screenTextBoxSizes && cursorPos) {
       const bbox = getBestFitSize({
         sizes: screenTextBoxSizes,
@@ -2208,8 +2384,8 @@ export class ContentHandler {
           cursorPos
         );
 
-        // Adjust the mousePos to use the middle of the first character of the
-        // selected text.
+        // Adjust the cursorPos to use the middle of the first character of
+        // the selected text.
         //
         // This should cause the popup to be better aligned with the selected
         // text which, apart from appearing a little bit neater, also makes
@@ -2217,9 +2393,9 @@ export class ContentHandler {
         //
         // (It's important we do this _after_ calling addMarginToPoint above
         // since, when we are using the puck, the original value of
-        // `cursorClearance` is relative to this.currentPoint, i.e. the original
-        // value of mousePos, so we need to supply that value when converting to
-        // a rect.)
+        // `cursorClearance` is relative to this.currentPoint, i.e. the
+        // original value of cursorPos, so we need to supply that value when
+        // converting to a rect.)
         const firstCharBbox = screenTextBoxSizes[1];
         cursorPos.x = Math.max(0, firstCharBbox.left + firstCharBbox.width / 2);
         cursorPos.y = Math.max(0, firstCharBbox.top + firstCharBbox.height / 2);
@@ -2229,166 +2405,7 @@ export class ContentHandler {
       }
     }
 
-    const safeArea = this.safeAreaProvider.getSafeArea();
-
-    // Work out its size
-
-    let popupSize = getPopupDimensions(popup);
-
-    // Finally get the popup position
-
-    let {
-      x: popupX,
-      y: popupY,
-      constrainWidth,
-      constrainHeight,
-      direction,
-      side,
-    } = getPopupPosition({
-      cursorClearance,
-      cursorPos,
-      fixedPosition: options?.fixPosition ? this.getFixedPosition() : undefined,
-      interactive: this.config.popupInteractive,
-      isVerticalText,
-      positionMode: this.popupPositionMode,
-      popupSize,
-      safeArea,
-      pointerType: this.currentTargetProps?.fromPuck ? 'puck' : 'cursor',
-    });
-
-    // If we are showing the copy overlay, we don't constrain the height of
-    // the popup since it may cause the buttons on the overlay to be clipped
-    // or scrolled out of view.
-    if (constrainHeight && showOverlay(this.copyState)) {
-      constrainHeight = null;
-    }
-
-    // Determine if we need to set a minimum height
-
-    let minHeight: number | null = null;
-    if (
-      options.fixMinHeight &&
-      constrainHeight === null &&
-      this.popupState?.pos &&
-      popupSize.height < this.popupState.pos.height
-    ) {
-      minHeight = this.popupState.pos.height;
-    }
-
-    // Store the popup's display mode so that:
-    //
-    // (a) we can fix the popup's position when changing tabs, and
-    // (b) we can detect if future mouse events lie between the popup and
-    //     the lookup point (and _not_ close or update the popup in that case)
-    // (c) we know how to handle keyboard events based on whether or not the
-    //     popup is showing
-
-    clearPopupTimeout(this.popupState);
-
-    this.popupState = {
-      pos: {
-        frameId: this.getFrameId() || 0,
-        x: popupX,
-        y: popupY,
-        width: constrainWidth ?? popupSize.width,
-        height: constrainHeight ?? minHeight ?? popupSize.height,
-        direction,
-        side,
-        lookupPoint: this.getPopupLookupPoint({
-          currentPagePoint: this.currentPagePoint,
-          firstCharBbox: screenTextBoxSizes?.[1],
-        }),
-      },
-      contentType: this.currentTargetProps?.contentType || 'text',
-      display: this.getNextDisplay(displayMode),
-    };
-
-    //
-    // Apply the popup position
-    //
-
-    if (
-      isSvgDoc(document) &&
-      isSvgSvgElement(document.documentElement) &&
-      isForeignObjectElement(popup.parentElement)
-    ) {
-      // Set the x/y attributes on the <foreignObject> wrapper after converting
-      // to document space.
-      const svg: SVGSVGElement = document.documentElement;
-      const wrapper: SVGForeignObjectElement = popup.parentElement;
-      wrapper.x.baseVal.value = popupX;
-      wrapper.y.baseVal.value = popupY;
-      const ctm = svg.getScreenCTM();
-      if (ctm) {
-        const transform = svg.createSVGTransformFromMatrix(ctm.inverse());
-        wrapper.transform.baseVal.initialize(transform);
-      }
-    } else {
-      popup.style.setProperty('--left', `${popupX}px`);
-      popup.style.setProperty('--top', `${popupY}px`);
-
-      if (constrainWidth) {
-        popup.style.setProperty('--max-width', `${constrainWidth}px`);
-      } else {
-        popup.style.removeProperty('--max-width');
-      }
-
-      if (constrainHeight) {
-        popup.style.removeProperty('--min-height');
-        popup.style.setProperty('--max-height', `${constrainHeight}px`);
-      } else if (minHeight) {
-        popup.style.setProperty('--min-height', `${minHeight}px`);
-        popup.style.removeProperty('--max-height');
-      } else {
-        popup.style.removeProperty('--min-height');
-        popup.style.removeProperty('--max-height');
-      }
-    }
-
-    //
-    // Maybe add an arrow to it
-    //
-    // This needs to happen after positioning the popup so we can read back its
-    // final size (after applying any edge case CSS rules) and determine if
-    // there is room for the arrow or not.
-    //
-
-    if (
-      cursorPos &&
-      (displayMode === 'hover' || displayMode === 'pinned') &&
-      direction !== 'disjoint' &&
-      side !== 'disjoint'
-    ) {
-      // Update the popup size now that we have positioned it.
-      popupSize = getPopupDimensions(popup);
-
-      const { scrollX, scrollY } = getScrollOffset();
-      renderPopupArrow({
-        direction,
-        // Convert page coordinates to screen coordinates
-        popupPos: { x: popupX - scrollX, y: popupY - scrollY },
-        popupSize,
-        side,
-        target: cursorPos,
-        theme: this.config.popupStyle,
-      });
-    }
-
-    //
-    // Tell child iframes
-    //
-    let childState = this.popupState!;
-    if (this.currentLookupParams?.source) {
-      childState = this.getTranslatedPopupState(
-        this.currentLookupParams.source,
-        this.popupState
-      );
-    }
-
-    void browser.runtime.sendMessage({
-      type: 'children:popupShown',
-      state: childState,
-    });
+    return { cursorClearance, cursorPos };
   }
 
   getInitialDisplayMode(interactive: 'ghost' | 'hover'): DisplayMode {
@@ -2440,14 +2457,21 @@ export class ContentHandler {
     return display;
   }
 
-  updatePopup(options: { fixPosition?: boolean; fixMinHeight?: boolean } = {}) {
+  updatePopup(
+    options: {
+      allowOverlap?: boolean;
+      fixPosition?: boolean;
+      fixMinHeight?: boolean;
+    } = {}
+  ) {
     if (!this.isTopMostWindow()) {
-      console.warn('Called updatePopup within iframe');
+      console.warn('[10ten-ja-reader] Called updatePopup within iframe');
       return;
     }
 
     const displayMode = this.popupState?.display.mode;
     this.showPopup({
+      allowOverlap: options.allowOverlap ?? this.popupState?.pos?.allowOverlap,
       displayMode,
       fixPosition: options.fixPosition,
       fixMinHeight: options.fixMinHeight,
@@ -2466,6 +2490,7 @@ export class ContentHandler {
     // we'll expand the tab bar so we should re-position it as necessary since
     // it might take more space.
     this.showPopup({
+      allowOverlap: this.popupState?.pos?.allowOverlap,
       displayMode: 'pinned',
       fixPosition: this.config.popupInteractive,
     });
@@ -2478,6 +2503,7 @@ export class ContentHandler {
     }
 
     this.showPopup({
+      allowOverlap: this.popupState?.pos?.allowOverlap,
       displayMode: this.getInitialDisplayMode('hover'),
       fixPosition: this.config.popupInteractive,
     });
@@ -2533,7 +2559,11 @@ export class ContentHandler {
       return;
     }
 
-    this.showPopup({ displayMode: 'hover', fixPosition: false });
+    this.showPopup({
+      allowOverlap: this.popupState?.pos?.allowOverlap,
+      displayMode: 'hover',
+      fixPosition: false,
+    });
   }
 
   hidePopup() {
@@ -2630,18 +2660,15 @@ export class ContentHandler {
       },
     };
   }
-
-  // Expose the renderPopup callback so that we can test it
-  _renderPopup = renderPopup;
 }
 
 export function isTouchClickEvent(
-  mouseEvent: MouseEvent
-): mouseEvent is TouchClickEvent {
-  return !!(mouseEvent as TouchClickEvent).fromTouch;
+  pointerEvent: PointerEvent
+): pointerEvent is TouchClickEvent {
+  return !!(pointerEvent as TouchClickEvent).fromTouch;
 }
 
-export interface TouchClickEvent extends MouseEvent {
+export interface TouchClickEvent extends PointerEvent {
   fromTouch: true;
 }
 
@@ -2791,6 +2818,10 @@ declare global {
         disable();
         break;
 
+      case 'dbUpdated':
+        contentHandler?.onDbUpdated();
+        break;
+
       case 'isTopMost':
         if (contentHandler?.getFrameId() === request.frame) {
           isEffectiveTopMostWindow = true;
@@ -2841,7 +2872,7 @@ declare global {
     }
 
     browser.runtime
-      .sendMessage({
+      .sendMessage<unknown, { frameId: number } | undefined>({
         type: 'enabled',
         src: document.location.href,
       })
@@ -2849,6 +2880,7 @@ declare global {
         if (!resp) {
           return;
         }
+
         const { frameId } = resp;
         if (contentHandler) {
           contentHandler.setFrameId(frameId);
@@ -2895,5 +2927,3 @@ declare global {
     void browser.runtime.sendMessage({ type: 'disabled' });
   }
 })();
-
-export default ContentHandler;

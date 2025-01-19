@@ -1,3 +1,4 @@
+/// <reference path="../common/constants.d.ts" />
 import Bugsnag from '@birchill/bugsnag-zero';
 import * as s from 'superstruct';
 import browser, { Runtime, Tabs } from 'webextension-polyfill';
@@ -44,15 +45,15 @@ export default class ActiveTabManager implements TabManager {
       (
         request: unknown,
         sender: Runtime.MessageSender
-      ): void | Promise<any> => {
+      ): undefined | Promise<any> => {
         // Basic sanity checks
         if (!s.is(request, BackgroundRequestSchema)) {
-          return;
+          return undefined;
         }
 
         // We only handle messages from tabs
         if (!sender.tab || typeof sender.tab.id !== 'number') {
-          return;
+          return undefined;
         }
 
         switch (request.type) {
@@ -82,6 +83,8 @@ export default class ActiveTabManager implements TabManager {
             );
             break;
         }
+
+        return undefined;
       }
     );
   }
@@ -139,8 +142,8 @@ export default class ActiveTabManager implements TabManager {
   // Toggling related interface
   //
 
-  async toggleTab(tab: Tabs.Tab, config: ContentConfigParams) {
-    if (typeof tab.id === 'undefined') {
+  async toggleTab(tab: Tabs.Tab | undefined, config: ContentConfigParams) {
+    if (typeof tab?.id === 'undefined') {
       return;
     }
 
@@ -500,7 +503,22 @@ export default class ActiveTabManager implements TabManager {
           frame: '*',
         });
       } catch (e) {
-        console.error(e);
+        console.error('Error sending enable message to tabs', e);
+        void Bugsnag.notify(e);
+      }
+    }
+  }
+
+  async notifyDbUpdated() {
+    const tabIds = Object.keys(this.enabledTabs).map(Number);
+    for (const tabId of tabIds) {
+      try {
+        await browser.tabs.sendMessage(tabId, {
+          type: 'dbUpdated',
+          frame: '*',
+        });
+      } catch (e) {
+        console.error('Error sending dbUpdated message to tabs', e);
         void Bugsnag.notify(e);
       }
     }

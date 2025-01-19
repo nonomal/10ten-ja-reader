@@ -10,6 +10,15 @@ const SearchRequestSchema = s.type({
 
 export type SearchRequest = s.Infer<typeof SearchRequestSchema>;
 
+const SearchOtherRequestSchema = s.assign(
+  SearchRequestSchema,
+  s.type({
+    wordsMatchLen: s.number(),
+  })
+);
+
+export type SearchOtherRequest = s.Infer<typeof SearchOtherRequestSchema>;
+
 export const BackgroundRequestSchema = discriminator('type', {
   //
   // Requests for the background page
@@ -17,16 +26,28 @@ export const BackgroundRequestSchema = discriminator('type', {
   canHoverChanged: s.type({ value: s.boolean() }),
   disabled: s.type({}),
   disableMouseInteraction: s.type({}),
-  dismissedMouseOnboarding: s.type({}),
   'enable?': s.type({}),
   enabled: s.type({
     src: s.string(),
   }),
   isDbUpdating: s.type({}),
   options: s.type({}),
+  puckStateChanged: s.type({
+    value: s.object({
+      x: s.number(),
+      y: s.number(),
+      orientation: s.enums(['above', 'below']),
+      active: s.boolean(),
+    }),
+  }),
   searchWords: SearchRequestSchema,
-  searchOther: SearchRequestSchema,
-  showMouseOnboarding: s.type({}),
+  searchOther: SearchOtherRequestSchema,
+  calculateEraDateTimeSpan: s.type({
+    era: s.string(),
+    year: s.number(),
+    month: s.optional(s.number()),
+    day: s.optional(s.number()),
+  }),
   toggleDefinition: s.type({}),
   translate: s.type({
     input: s.string(),
@@ -76,6 +97,7 @@ export const BackgroundRequestSchema = discriminator('type', {
   'top:clearResult': s.type({}),
   'top:nextDictionary': s.type({}),
   'top:toggleDefinition': s.type({}),
+  'top:expandPopup': s.type({}),
   'top:movePopup': s.type({ direction: s.enums(['up', 'down']) }),
 
   // Copy mode requests

@@ -1,7 +1,15 @@
-import { browser } from './browser-polyfill';
+import { ContentHandler } from '../src/content/content';
+
+import browser from './browser-polyfill';
+
 (window as any).browser = browser;
 
-import { ContentHandler } from '../src/content/content';
+// Make sure the browser polyfill believes we are in an extension context
+(window as any).chrome = {
+  runtime: {
+    id: 'test',
+  },
+};
 
 declare global {
   interface Window {

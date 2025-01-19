@@ -1,9 +1,14 @@
 {
   "compilerOptions": {
+    "allowJs": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "lib": ["dom", "dom.iterable", "es2020", "ES2020.Intl", "webworker"],
-    "moduleResolution": "node",
+    "module": "es2020",
+    "moduleResolution": "bundler",
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
@@ -11,8 +16,7 @@
     "pretty": true,
     "sourceMap": true,
     "strictNullChecks": true,
-    "target": "es2019"
+    "target": "es2020"
   },
-  "include": ["./src/**/*"],
-  "exclude": ["./utils/sync-manifest-version.mts"]
+  "include": ["./src/**/*", "./scripts/*.ts", "./*.ts", "./*.cjs"]
 }

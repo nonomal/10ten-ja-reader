@@ -1,12 +1,16 @@
 .DS_Store
 **/*.xcuserstate
 **/xcuserdata/**
+cosmos-export
 coverage
 node_modules
 tests/content-loader.js
 tests/content-loader.js.map
+tests/_locales_*.js
 dist-chrome
+dist-chrome-electron
 dist-chrome-package
+dist-chrome-electron-package
 dist-edge
 dist-edge-package
 dist-firefox
@@ -15,4 +19,5 @@ dist-safari
 dist-src
 dist-thunderbird
 dist-thunderbird-package
+release-assets
 yarn-error.log

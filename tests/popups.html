@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <meta charset="utf-8" />
 <title>Generated popup content inspector</title>
 <link href="../css/popup.css" rel="stylesheet" />
@@ -20,7 +20,9 @@
     keys: {
       toggleDefinition: ['d'],
       nextDictionary: ['Shift', 'Enter'],
+      expandPopup: ['x'],
       kanjiLookup: [],
+      pinPopup: ['Ctrl'],
       startCopy: ['c'],
     },
     noTextHighlight: false,
@@ -100,571 +102,12 @@
         dictToShow: getDictFromResult(test.queryResult),
         popupStyle: 'blue',
         showDefinitions: !test.extraConfig || !test.extraConfig.readingOnly,
+        waniKaniVocabDisplay: 'show-matches',
       });
       popup.classList.add('-inline');
     }
 
     const themes = ['light', 'blue', 'lightblue', 'black', 'yellow'];
-
-    // Name tag test
-
-    addHeading('Name tags');
-
-    const nameTagTest = {
-      names: {
-        type: 'names',
-        data: [
-          {
-            k: ['中野'],
-            r: ['なかの'],
-            tr: [{ type: ['place', 'surname'], det: ['Nakano'] }],
-          },
-          {
-            k: ['中野'],
-            r: ['なかのざき'],
-            tr: [{ type: ['surname'], det: ['Nakanozaki'] }],
-          },
-          {
-            k: ['中'],
-            r: ['あたり'],
-            tr: [{ type: ['fem', 'surname'], det: ['Atari'] }],
-          },
-        ],
-        more: false,
-        matchLen: 2,
-      },
-    };
-
-    for (const theme of themes) {
-      const label = document.createElement('div');
-      label.classList.add('label');
-      label.append(`Theme: ${theme}`);
-      container.append(label);
-
-      const popup = contentHandler._renderPopup(nameTagTest, {
-        ...config,
-        container: createPopupContainer(),
-        dictToShow: 'names',
-        popupStyle: theme,
-        showDefinitions: true,
-      });
-      popup.classList.add('-inline');
-    }
-
-    // Year tests
-
-    addHeading('Year conversion');
-    const yearQueryResult = {
-      type: 'words',
-      data: [
-        {
-          k: [{ ent: '令和', p: ['s1'], match: true }],
-          r: [{ ent: 'れいわ', p: ['s1'], match: true }],
-          s: [
-            {
-              g: [{ str: 'Reiwa era (May 1, 2019-)' }],
-              pos: ['n'],
-              match: true,
-            },
-          ],
-        },
-        {
-          k: [{ ent: '令', p: ['n1', 'nf05'], match: true }],
-          r: [{ ent: 'れい', p: ['n1', 'nf05'], a: 1, match: true }],
-          s: [
-            {
-              g: [{ str: 'command' }, { str: 'order' }, { str: 'dictation' }],
-              pos: ['n', 'n-suf'],
-              match: true,
-            },
-            {
-              g: [{ str: 'nth year in the Reiwa era (May 1, 2019-)' }],
-              pos: ['pref'],
-              match: true,
-            },
-          ],
-        },
-        {
-          k: [{ ent: '令', match: true }],
-          r: [{ ent: 'りょう', a: 1, match: true }],
-          s: [
-            {
-              g: [{ str: 'administrative and civil code' }],
-              pos: ['n'],
-              misc: ['arch'],
-              match: true,
-            },
-          ],
-        },
-      ],
-      more: false,
-      matchLen: 2,
-    };
-
-    const yearTests = [
-      {
-        description: 'Regular year',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: { type: 'era', era: '令和', year: 2 },
-        },
-      },
-      {
-        description: '元年',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: { type: 'era', era: '令和', year: 0 },
-        },
-      },
-    ];
-
-    for (const test of yearTests) {
-      addHeading(test.description, 3);
-
-      for (const theme of themes) {
-        const label = document.createElement('div');
-        label.classList.add('label');
-        label.append(`Theme: ${theme}`);
-        container.append(label);
-
-        const popup = contentHandler._renderPopup(yearQueryResult, {
-          ...test.config,
-          container: createPopupContainer(),
-          dictToShow: 'words',
-          popupStyle: theme,
-        });
-        popup.classList.add('-inline');
-      }
-    }
-
-    // Measure tests
-
-    addHeading('Measurement conversion');
-    const measureTests = [
-      {
-        description: '帖 measure',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: { type: 'measure', value: 6, unit: '帖' },
-        },
-      },
-      {
-        description: '畳 measure',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: { type: 'measure', value: 4.5, unit: '畳' },
-        },
-      },
-      {
-        description: 'Square metre measure',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: { type: 'measure', value: 5, unit: 'm2' },
-        },
-      },
-    ];
-
-    for (const test of measureTests) {
-      addLabel(test.description);
-      const popup = contentHandler._renderPopup(null, {
-        ...test.config,
-        container: createPopupContainer(),
-        dictToShow: 'words',
-        popupStyle: 'light',
-      });
-      popup.classList.add('-inline');
-    }
-
-    // Currency tests
-
-    addHeading('Currency conversion');
-    const currencyTests = [
-      {
-        description: 'USD',
-        config: {
-          ...config,
-          fxData: {
-            currency: 'USD',
-            rate: 0.009115065781351295,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 88000,
-          },
-        },
-      },
-      {
-        description: 'KRW',
-        config: {
-          ...config,
-          fxData: {
-            currency: 'KRW',
-            rate: 10.688500558390665,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 88000,
-          },
-        },
-      },
-      {
-        description: 'USD (interactive version)',
-        config: {
-          ...config,
-          fxData: {
-            currency: 'USD',
-            rate: 0.009115065781351295,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 88000,
-          },
-        },
-      },
-      {
-        description: 'AED (redundant currency code)',
-        config: {
-          ...config,
-          fxData: {
-            currency: 'AED',
-            rate: 0.033166509528545496,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 88000,
-          },
-        },
-      },
-      {
-        description: 'BTC',
-        config: {
-          ...config,
-          fxData: {
-            currency: 'BTC',
-            rate: 2.0997785505420689e-7,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 88000,
-          },
-        },
-      },
-    ];
-
-    for (const test of currencyTests) {
-      addLabel(test.description);
-      const popup = contentHandler._renderPopup(null, {
-        ...test.config,
-        container: createPopupContainer(),
-        dictToShow: 'words',
-        popupStyle: 'light',
-        onClosePopup: () => {
-          console.log('closed');
-        },
-        onShowSettings: () => {},
-        onTogglePin: () => {},
-      });
-      popup.classList.add('-inline');
-      if (test.description.indexOf('interactive') !== -1) {
-        popup.querySelector('.container').classList.add('interactive');
-      }
-    }
-
-    // Special tests for names + currency
-    {
-      addLabel('Currency + names');
-      const popup = contentHandler._renderPopup(
-        {
-          words: null,
-          names: {
-            type: 'names',
-            data: [
-              {
-                id: 5743402,
-                k: ['６４'],
-                r: ['ロクヨン'],
-                tr: [{ det: ['Nintendo 64 (col)'], type: ['product'] }],
-                matchLen: 2,
-              },
-            ],
-            more: false,
-            matchLen: 2,
-          },
-          kanji: null,
-          resultType: 'full',
-        },
-        {
-          ...config,
-          dictToShow: 'names',
-          fxData: {
-            currency: 'USD',
-            rate: 0.009115065781351295,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 64040,
-            matchLen: 7,
-          },
-          container: createPopupContainer(),
-          popupStyle: 'light',
-          onClosePopup: () => {
-            console.log('closed');
-          },
-          onShowSettings: () => {},
-          onTogglePin: () => {},
-        }
-      );
-      popup.classList.add('-inline');
-    }
-
-    {
-      addLabel('Currency + names + multicol');
-      const popup = contentHandler._renderPopup(
-        {
-          words: null,
-          names: {
-            type: 'names',
-            data: [
-              {
-                id: 5743402,
-                k: ['６４'],
-                r: ['ロクヨン'],
-                tr: [{ det: ['Nintendo 64 (col)'], type: ['product'] }],
-                matchLen: 2,
-              },
-              // The following don't make sense but should be enough to force
-              // us into multicol mode
-              {
-                k: ['日本'],
-                r: ['にっぽん'],
-                tr: [{ type: ['surname'], det: ['Nippon'] }],
-              },
-              {
-                k: ['日本'],
-                r: ['につぽん'],
-                tr: [{ type: ['surname'], det: ['Nitsupon'] }],
-              },
-              {
-                k: ['日本'],
-                r: ['にほん'],
-                tr: [{ type: ['surname'], det: ['Nihon'] }],
-              },
-              {
-                k: ['日本'],
-                r: ['ひのもと'],
-                tr: [{ type: ['surname'], det: ['Hinomoto'] }],
-              },
-            ],
-            more: false,
-            matchLen: 2,
-          },
-          kanji: null,
-          resultType: 'full',
-        },
-        {
-          ...config,
-          dictToShow: 'names',
-          fxData: {
-            currency: 'USD',
-            rate: 0.009115065781351295,
-            timestamp: 1631754180485,
-          },
-          meta: {
-            type: 'currency',
-            value: 64040,
-            matchLen: 7,
-          },
-          container: createPopupContainer(),
-          popupStyle: 'light',
-          onClosePopup: () => {
-            console.log('closed');
-          },
-          onShowSettings: () => {},
-          onTogglePin: () => {},
-        }
-      );
-      popup.classList.add('-inline');
-    }
-
-    // Number tests
-
-    addHeading('Number conversion');
-    const numberTests = [
-      {
-        description: 'in isolation',
-        config: {
-          ...config,
-          meta: {
-            type: 'number',
-            value: 88000,
-            src: '8万8千',
-            matchLen: 5,
-          },
-        },
-      },
-      {
-        description: 'in isolation (interactive version)',
-        config: {
-          ...config,
-          meta: {
-            type: 'number',
-            value: 88000,
-            src: '8万8千',
-            matchLen: 5,
-          },
-        },
-      },
-      {
-        description: 'combined',
-        config: {
-          ...config,
-          meta: {
-            type: 'number',
-            src: '九十八',
-            value: 98,
-            matchLen: 5,
-          },
-        },
-        queryResult: {
-          words: {
-            type: 'words',
-            data: [
-              {
-                id: 1578160,
-                k: [
-                  { ent: '９０', p: ['s1'], match: false },
-                  {
-                    ent: '九十',
-                    p: ['n1', 'nf06'],
-                    match: true,
-                    matchRange: [0, 2],
-                  },
-                  { ent: '九〇', match: false },
-                ],
-                r: [
-                  { ent: 'きゅうじゅう', p: ['n1', 'nf06', 's1'], match: true },
-                  { ent: 'くじゅう', match: true },
-                ],
-                s: [
-                  {
-                    g: [{ str: 'ninety' }, { str: '90' }],
-                    pos: ['num'],
-                    match: true,
-                  },
-                ],
-              },
-              {
-                id: 1578150,
-                k: [
-                  {
-                    ent: '九',
-                    p: ['i1', 'n1', 'nf01'],
-                    match: true,
-                    matchRange: [0, 1],
-                  },
-                  { ent: '９', match: false },
-                  { ent: '玖', match: false },
-                ],
-                r: [
-                  { ent: 'きゅう', p: ['i1', 'n1', 'nf01'], a: 1, match: true },
-                  { ent: 'く', p: ['i1'], a: 1, match: true },
-                  { ent: 'ここの', a: 2, match: true },
-                  { ent: 'この', a: 1, match: true },
-                  { ent: 'ここ', match: true },
-                ],
-                s: [
-                  {
-                    g: [{ str: 'nine' }],
-                    inf: '玖 is used in legal documents',
-                    pos: ['num'],
-                    match: true,
-                  },
-                ],
-              },
-              {
-                id: 2748010,
-                k: [{ ent: '九', match: true, matchRange: [0, 1] }],
-                r: [{ ent: 'チュー', a: 1, match: true }],
-                s: [
-                  {
-                    g: [{ str: 'nine' }],
-                    inf: 'クー, キュー or チュー in mahjong',
-                    lsrc: [{ lang: 'zh', src: 'jiǔ' }],
-                    pos: ['num'],
-                    match: true,
-                  },
-                ],
-              },
-            ],
-            more: false,
-            matchLen: 2,
-          },
-          resultType: 'full',
-        },
-      },
-    ];
-
-    for (const test of numberTests) {
-      addLabel(test.description);
-      const popup = contentHandler._renderPopup(test.queryResult || null, {
-        ...test.config,
-        container: createPopupContainer(),
-        dictToShow: 'words',
-        popupStyle: 'light',
-        showDefinitions: true,
-        onClosePopup: () => {
-          console.log('closed');
-        },
-        onShowSettings: () => {},
-        onTogglePin: () => {},
-      });
-      popup.classList.add('-inline');
-      if (test.description.indexOf('interactive') !== -1) {
-        popup.querySelector('.container').classList.add('interactive');
-      }
-    }
-
-    // Shogi tests
-
-    addHeading('Shogi move parsing');
-    const shogiTests = [
-      {
-        description: 'Shogi move',
-        config: {
-          ...config,
-          showDefinitions: true,
-          meta: {
-            type: 'shogi',
-            matchLen: 4,
-            side: 'black',
-            dest: [2, 5],
-            piece: 'pro_b',
-          },
-        },
-      },
-    ];
-
-    for (const test of shogiTests) {
-      addLabel(test.description);
-      const popup = contentHandler._renderPopup(null, {
-        ...test.config,
-        container: createPopupContainer(),
-        dictToShow: 'words',
-        popupStyle: 'light',
-      });
-      popup.classList.add('-inline');
-    }
 
     // Interactive mode tests
 
@@ -679,7 +122,7 @@
             s: [{ g: [{ str: 'Korean (language)' }], pos: ['n'], match: true }],
           },
           {
-            k: [{ ent: '韓国', p: ['n1', 'nf01'], match: true }],
+            k: [{ ent: '韓国', p: ['n1', 'nf01'], wk: 29, match: true }],
             r: [{ ent: 'かんこく', p: ['n1', 'nf01'], a: 0, match: true }],
             s: [
               {
@@ -737,49 +180,51 @@
       },
       kanji: {
         type: 'kanji',
-        data: {
-          c: '士',
-          r: {
-            on: ['シ'],
-            kun: ['さむらい'],
-            na: ['お', 'ま'],
-          },
-          m: ['gentleman', 'scholar', 'samurai', 'samurai radical (no. 33)'],
-          rad: {
-            x: 33,
-            b: '⼠',
-            k: '士',
-            na: ['さむらい'],
-            m: ['gentleman', 'scholar', 'samurai'],
+        data: [
+          {
+            c: '士',
+            r: {
+              on: ['シ'],
+              kun: ['さむらい'],
+              na: ['お', 'ま'],
+            },
+            m: ['gentleman', 'scholar', 'samurai', 'samurai radical (no. 33)'],
+            rad: {
+              x: 33,
+              b: '⼠',
+              k: '士',
+              na: ['さむらい'],
+              m: ['gentleman', 'scholar', 'samurai'],
+              m_lang: 'en',
+            },
+            refs: {
+              nelson_c: 1160,
+              nelson_n: 1117,
+              halpern_njecd: 3405,
+              halpern_kkld: 2129,
+              halpern_kkld_2ed: 2877,
+              heisig: 319,
+              heisig6: 341,
+              henshall: 494,
+              sh_kk: 572,
+              sh_kk2: 581,
+              kanji_in_context: 755,
+              kodansha_compact: 393,
+              skip: '4-3-2',
+              sh_desc: '3p0.1',
+              conning: 350,
+            },
+            misc: {
+              sc: 3,
+              gr: 4,
+              freq: 526,
+              jlpt: 1,
+              kk: 7,
+            },
             m_lang: 'en',
+            comp: [],
           },
-          refs: {
-            nelson_c: 1160,
-            nelson_n: 1117,
-            halpern_njecd: 3405,
-            halpern_kkld: 2129,
-            halpern_kkld_2ed: 2877,
-            heisig: 319,
-            heisig6: 341,
-            henshall: 494,
-            sh_kk: 572,
-            sh_kk2: 581,
-            kanji_in_context: 755,
-            kodansha_compact: 393,
-            skip: '4-3-2',
-            sh_desc: '3p0.1',
-            conning: 350,
-          },
-          misc: {
-            sc: 3,
-            gr: 4,
-            freq: 526,
-            jlpt: 1,
-            kk: 7,
-          },
-          m_lang: 'en',
-          comp: [],
-        },
+        ],
       },
     };
 
@@ -801,6 +246,7 @@
         onClosePopup: () => {},
         onShowSettings: () => {},
         onTogglePin: () => {},
+        waniKaniVocabDisplay: 'show-matches',
       });
       popup.classList.add('-inline');
     }
@@ -1066,29 +512,6 @@
       }
 
       {
-        addHeading(`Tab display: ${tabDisplay} (with status bar and onboarding)`, 3);
-        const popup = contentHandler._renderPopup(
-          { ...kankokuWordsResult, resultType: 'db-updating' },
-          {
-            ...config,
-            container: createPopupContainer(),
-            dictToShow: 'words',
-            popupStyle: 'default',
-            showDefinitions: true,
-            showMouseOnboarding: true,
-            switchDictionaryKeys: ['Shift', 'Enter'],
-            tabDisplay,
-            onClosePopup: () => {},
-            onShowSettings: () => {},
-            onTogglePin: () => {},
-          }
-        );
-
-        popup.classList.add('-inline');
-        popup.style.setProperty('--min-height', '600px');
-      }
-
-      {
         addHeading(`Tab display: ${tabDisplay} (interactive version)`, 3);
         const popup = contentHandler._renderPopup(kankokuWordsResult, {
           ...config,
@@ -1139,26 +562,24 @@
           `Tab display: ${tabDisplay} (interactive version with copy overlay)`,
           3
         );
-        const popup = contentHandler._renderPopup(kankokuWordsResult,
-          {
-            ...config,
-            container: createPopupContainer(),
-            copyState: {
-              kind: 'active',
-              index: 1,
-              mode: 'touch',
-            },
-            dictToShow: 'words',
-            displayMode: 'hover',
-            popupStyle: 'default',
-            showDefinitions: true,
-            switchDictionaryKeys: ['Shift', 'Enter'],
-            tabDisplay,
-            onClosePopup: () => {},
-            onShowSettings: () => {},
-            onTogglePin: () => {},
-          }
-        );
+        const popup = contentHandler._renderPopup(kankokuWordsResult, {
+          ...config,
+          container: createPopupContainer(),
+          copyState: {
+            kind: 'active',
+            index: 1,
+            mode: 'touch',
+          },
+          dictToShow: 'words',
+          displayMode: 'hover',
+          popupStyle: 'default',
+          showDefinitions: true,
+          switchDictionaryKeys: ['Shift', 'Enter'],
+          tabDisplay,
+          onClosePopup: () => {},
+          onShowSettings: () => {},
+          onTogglePin: () => {},
+        });
 
         popup.classList.add('-inline');
         popup.style.setProperty('--min-height', '400px');
@@ -1268,54 +689,56 @@
         queryResult: {
           kanji: {
             type: 'kanji',
-            data: {
-              c: '士',
-              r: {
-                on: ['シ'],
-                kun: ['さむらい'],
-                na: ['お', 'ま'],
-              },
-              m: [
-                'gentleman',
-                'scholar',
-                'samurai',
-                'samurai radical (no. 33)',
-              ],
-              rad: {
-                x: 33,
-                b: '⼠',
-                k: '士',
-                na: ['さむらい'],
-                m: ['gentleman', 'scholar', 'samurai'],
+            data: [
+              {
+                c: '士',
+                r: {
+                  on: ['シ'],
+                  kun: ['さむらい'],
+                  na: ['お', 'ま'],
+                },
+                m: [
+                  'gentleman',
+                  'scholar',
+                  'samurai',
+                  'samurai radical (no. 33)',
+                ],
+                rad: {
+                  x: 33,
+                  b: '⼠',
+                  k: '士',
+                  na: ['さむらい'],
+                  m: ['gentleman', 'scholar', 'samurai'],
+                  m_lang: 'en',
+                },
+                refs: {
+                  nelson_c: 1160,
+                  nelson_n: 1117,
+                  halpern_njecd: 3405,
+                  halpern_kkld: 2129,
+                  halpern_kkld_2ed: 2877,
+                  heisig: 319,
+                  heisig6: 341,
+                  henshall: 494,
+                  sh_kk: 572,
+                  sh_kk2: 581,
+                  kanji_in_context: 755,
+                  kodansha_compact: 393,
+                  skip: '4-3-2',
+                  sh_desc: '3p0.1',
+                  conning: 350,
+                },
+                misc: {
+                  sc: 3,
+                  gr: 4,
+                  freq: 526,
+                  jlpt: 1,
+                  kk: 7,
+                },
                 m_lang: 'en',
+                comp: [],
               },
-              refs: {
-                nelson_c: 1160,
-                nelson_n: 1117,
-                halpern_njecd: 3405,
-                halpern_kkld: 2129,
-                halpern_kkld_2ed: 2877,
-                heisig: 319,
-                heisig6: 341,
-                henshall: 494,
-                sh_kk: 572,
-                sh_kk2: 581,
-                kanji_in_context: 755,
-                kodansha_compact: 393,
-                skip: '4-3-2',
-                sh_desc: '3p0.1',
-                conning: 350,
-              },
-              misc: {
-                sc: 3,
-                gr: 4,
-                freq: 526,
-                jlpt: 1,
-                kk: 7,
-              },
-              m_lang: 'en',
-              comp: [],
-            },
+            ],
           },
         },
       },
@@ -1413,54 +836,6 @@
         );
         popup.classList.add('-inline');
       }
-    }
-
-    // Mouse onboarding
-
-    addHeading('Mouse onboarding');
-
-    for (const theme of themes) {
-      const label = document.createElement('div');
-      label.classList.add('label');
-      label.append(`Theme: ${theme}`);
-      container.append(label);
-
-      const popup = contentHandler._renderPopup(kankokuWordsResult, {
-        ...config,
-        container: createPopupContainer(),
-        displayMode: 'float',
-        dictToShow: 'words',
-        popupStyle: theme,
-        showDefinitions: true,
-        showMouseOnboarding: true,
-        onClosePopup: () => {},
-        onShowSettings: () => {},
-        onTogglePin: () => {},
-      });
-      popup.classList.add('-inline');
-    }
-
-    addHeading('Mouse onboarding + copy overlay');
-
-    {
-      const popup = contentHandler._renderPopup(kankokuWordsResult, {
-        ...config,
-        container: createPopupContainer(),
-        copyState: {
-          kind: 'active',
-          index: 1,
-          mode: 'touch',
-        },
-        displayMode: 'float',
-        dictToShow: 'words',
-        popupStyle: themes[0],
-        showDefinitions: true,
-        showMouseOnboarding: true,
-        onClosePopup: () => {},
-        onShowSettings: () => {},
-        onTogglePin: () => {},
-      });
-      popup.classList.add('-inline');
     }
   </script>
 </body>

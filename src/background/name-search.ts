@@ -1,8 +1,9 @@
 import Bugsnag from '@birchill/bugsnag-zero';
-import { AbortError, getNames, NameResult } from '@birchill/jpdict-idb';
+import { AbortError, NameResult, getNames } from '@birchill/jpdict-idb';
 import { expandChoon, kyuujitaiToShinjitai } from '@birchill/normal-jp';
 
 import { isOnlyDigits } from '../utils/char-range';
+
 import { NameSearchResult } from './search-result';
 import { endsInYoon } from './yoon';
 
@@ -28,6 +29,10 @@ export async function nameSearch({
 
   // Record the position of existing entries for grouping purposes
   const existingItems = new Map<string, number>();
+
+  // Record which entries we have already seen so we don't try to merge the same
+  // entries when matching on variants
+  const have = new Set<number>();
 
   let currentString = input;
 
@@ -61,11 +66,13 @@ export async function nameSearch({
       try {
         names = await getNames(variant);
       } catch (e) {
-        console.error(e);
+        console.error('Error looking up names', e);
         void Bugsnag.notify(e || '(Error looking up names)');
         return null;
       }
 
+      // Filter out entries we already have
+      names = names.filter((name) => !have.has(name.id));
       if (!names.length) {
         continue;
       }
@@ -73,6 +80,8 @@ export async function nameSearch({
       result.matchLen = Math.max(result.matchLen, currentInputLength);
 
       for (const name of names) {
+        have.add(name.id);
+
         // We group together entries where the kana readings and translation
         // details are all equal.
         const nameContents = getNameEntryHash(name);

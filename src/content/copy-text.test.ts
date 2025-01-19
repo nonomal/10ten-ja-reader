@@ -1,46 +1,41 @@
-// Mock browser.i18n.getMessage
-const mockBrowser = {
-  i18n: {
-    getMessage: (id: string, replacements?: Array<string>) => {
-      switch (id) {
-        case 'content_kanji_base_radical':
-          return `from ${replacements ? replacements[0] : '?'} (${
-            replacements ? replacements[1] : '?'
-          })`;
-        case 'content_kanji_components_label':
-          return 'components';
-        case 'content_kanji_radical_label':
-          return 'radical';
-        case 'content_kanji_kentei_level_pre':
-          return `Pre-${replacements ? replacements[0] : '?'}`;
-        case 'content_kanji_kentei_level':
-          return `${replacements ? replacements[0] : '?'}`;
-        case 'gloss_type_short_expl':
-          return 'expl.';
-        case 'gloss_type_short_lit':
-          return 'lit.';
-        case 'gloss_type_short_fig':
-          return 'fig.';
-        case 'ref_label_radical':
-          return 'Radical';
-        case 'ref_label_nelson_r':
-          return 'Radical (Nelson)';
-        case 'ref_label_kk':
-          return 'Kanji Kentei';
-        case 'ref_label_jlpt':
-          return 'JLPT';
-        case 'ref_label_unicode':
-          return 'Unicode';
-        default:
-          return 'Unrecognized string ID';
-      }
-    },
-  },
-};
-
-jest.mock('webextension-polyfill', () => mockBrowser);
+import { describe, expect, it } from 'vitest';
 
 import { getEntryToCopy, getFieldsToCopy, getWordToCopy } from './copy-text';
+
+const getMessage = (id: string, replacements?: string | Array<string>) => {
+  switch (id) {
+    case 'content_kanji_base_radical':
+      return `from ${replacements ? replacements[0] : '?'} (${
+        replacements ? replacements[1] : '?'
+      })`;
+    case 'content_kanji_components_label':
+      return 'components';
+    case 'content_kanji_radical_label':
+      return 'radical';
+    case 'content_kanji_kentei_level_pre':
+      return `Pre-${replacements ? replacements[0] : '?'}`;
+    case 'content_kanji_kentei_level':
+      return `${replacements ? replacements[0] : '?'}`;
+    case 'gloss_type_short_expl':
+      return 'expl.';
+    case 'gloss_type_short_lit':
+      return 'lit.';
+    case 'gloss_type_short_fig':
+      return 'fig.';
+    case 'ref_label_radical':
+      return 'Radical';
+    case 'ref_label_nelson_r':
+      return 'Radical (Nelson)';
+    case 'ref_label_kk':
+      return 'Kanji Kentei';
+    case 'ref_label_jlpt':
+      return 'JLPT';
+    case 'ref_label_unicode':
+      return 'Unicode';
+    default:
+      return 'Unrecognized string ID';
+  }
+};
 
 describe('getWordToCopy', () => {
   it('copies a word from a word search', () => {
@@ -297,164 +292,288 @@ describe('getWordToCopy', () => {
 describe('getEntryToCopy', () => {
   it('prepares text from word search results', () => {
     expect(
-      getEntryToCopy({
-        type: 'word',
-        data: {
-          id: 1,
-          k: [{ ent: '韓国語', p: ['s1'], match: true }],
-          r: [{ ent: 'かんこくご', p: ['s1'], a: 0, match: true }],
-          s: [{ pos: ['n'], g: [{ str: 'Korean (language)' }], match: true }],
-          romaji: ['kankokugo'],
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1,
+            k: [{ ent: '韓国語', p: ['s1'], match: true }],
+            r: [{ ent: 'かんこくご', p: ['s1'], a: 0, match: true }],
+            s: [{ pos: ['n'], g: [{ str: 'Korean (language)' }], match: true }],
+            romaji: ['kankokugo'],
+          },
         },
-      })
-    ).toEqual('韓国語 [かんこくご] (kankokugo) (n) Korean (language)');
+        { getMessage }
+      )
+    ).toEqual('韓国語 [かんこくご] (kankokugo)\n(n) Korean (language)');
   });
 
   it('prepares text and extended metadata from a word search', () => {
     expect(
-      getEntryToCopy({
-        type: 'word',
-        data: {
-          id: 1,
-          k: [],
-          r: [{ ent: 'ホルモン', p: ['g1'], a: 1, match: true }],
-          s: [
-            {
-              g: [{ str: 'hormone' }],
-              pos: ['n', 'adj-no'],
-              lsrc: [{ lang: 'de', src: 'Hormon' }],
-              match: true,
-            },
-            {
-              g: [{ str: "cows' or pigs' offal (entrails)" }],
-              inf: 'from 放る物',
-              pos: ['n', 'adj-no'],
-              dial: ['ks'],
-              match: true,
-            },
-          ],
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1,
+            k: [],
+            r: [{ ent: 'ホルモン', p: ['g1'], a: 1, match: true }],
+            s: [
+              {
+                g: [{ str: 'hormone' }],
+                pos: ['n', 'adj-no'],
+                lsrc: [{ lang: 'de', src: 'Hormon' }],
+                match: true,
+              },
+              {
+                g: [{ str: "cows' or pigs' offal (entrails)" }],
+                inf: 'from 放る物',
+                pos: ['n', 'adj-no'],
+                dial: ['ks'],
+                match: true,
+              },
+            ],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
-      "ホルモン (1) (n,adj-no) hormone (de: Hormon) (2) (n,adj-no) (ksb:) cows' or pigs' offal (entrails) (from 放る物)"
+      "ホルモン\n(1) (n,adj-no) hormone (de: Hormon)\n(2) (n,adj-no) (ksb:) cows' or pigs' offal (entrails) (from 放る物)"
     );
   });
 
   it('prepares text from a word search with gloss types', () => {
     expect(
-      getEntryToCopy({
-        type: 'word',
-        data: {
-          id: 1,
-          k: [{ ent: '虎嘯', match: true }],
-          r: [{ ent: 'こしょう', a: 0, match: true }],
-          s: [
-            { g: [{ str: "tiger's howling" }], pos: ['n', 'vs'], match: true },
-            {
-              g: [
-                {
-                  str: 'being out and active in the world (of a hero, etc.)',
-                  type: 3,
-                },
-              ],
-              pos: ['n', 'vs'],
-              match: true,
-            },
-          ],
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1,
+            k: [{ ent: '虎嘯', match: true }],
+            r: [{ ent: 'こしょう', a: 0, match: true }],
+            s: [
+              {
+                g: [{ str: "tiger's howling" }],
+                pos: ['n', 'vs'],
+                match: true,
+              },
+              {
+                g: [
+                  {
+                    str: 'being out and active in the world (of a hero, etc.)',
+                    type: 'fig',
+                  },
+                ],
+                pos: ['n', 'vs'],
+                match: true,
+              },
+            ],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
-      "虎嘯 [こしょう] (1) (n,vs) tiger's howling (2) (n,vs) (fig.) being out and active in the world (of a hero, etc.)"
+      "虎嘯 [こしょう]\n(1) (n,vs) tiger's howling\n(2) (n,vs) (fig.) being out and active in the world (of a hero, etc.)"
     );
   });
 
   it('does not copy search-only kanji headwords from a word search', () => {
     expect(
-      getEntryToCopy({
-        type: 'word',
-        data: {
-          id: 1169210,
-          k: [
-            { ent: '引き裂く', p: ['i1'], match: true },
-            { ent: '引裂く', match: true },
-            { ent: '引きさく', match: true, i: ['sK'] },
-          ],
-          r: [
-            {
-              ent: 'ひきさく',
-              p: ['i1'],
-              a: 3,
-              match: true,
-              matchRange: [0, 4],
-            },
-          ],
-          s: [
-            {
-              g: [
-                { str: 'to tear up' },
-                { str: 'to tear off' },
-                { str: 'to rip up' },
-                { str: 'to tear to pieces' },
-              ],
-              pos: ['v5k', 'vt'],
-              match: true,
-            },
-            {
-              g: [
-                { str: 'to (forcibly) separate (a couple, family, etc.)' },
-                { str: 'to force apart' },
-                { str: 'to tear apart' },
-              ],
-              pos: ['v5k', 'vt'],
-              match: true,
-            },
-          ],
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1169210,
+            k: [
+              { ent: '引き裂く', p: ['i1'], match: true },
+              { ent: '引裂く', match: true },
+              { ent: '引きさく', match: true, i: ['sK'] },
+            ],
+            r: [
+              {
+                ent: 'ひきさく',
+                p: ['i1'],
+                a: 3,
+                match: true,
+                matchRange: [0, 4],
+              },
+            ],
+            s: [
+              {
+                g: [
+                  { str: 'to tear up' },
+                  { str: 'to tear off' },
+                  { str: 'to rip up' },
+                  { str: 'to tear to pieces' },
+                ],
+                pos: ['v5k', 'vt'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to (forcibly) separate (a couple, family, etc.)' },
+                  { str: 'to force apart' },
+                  { str: 'to tear apart' },
+                ],
+                pos: ['v5k', 'vt'],
+                match: true,
+              },
+            ],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
-      '引き裂く, 引裂く [ひきさく] (1) (v5k,vt) to tear up; to tear off; to rip up; to tear to pieces (2) (v5k,vt) to (forcibly) separate (a couple, family, etc.); to force apart; to tear apart'
+      '引き裂く, 引裂く [ひきさく]\n(1) (v5k,vt) to tear up; to tear off; to rip up; to tear to pieces\n(2) (v5k,vt) to (forcibly) separate (a couple, family, etc.); to force apart; to tear apart'
     );
   });
 
   it('does not copy search-only kana headwords from a word search', () => {
     expect(
-      getEntryToCopy({
-        type: 'word',
-        data: {
-          id: 1037940,
-          k: [],
-          r: [
-            { ent: 'カネロニ', a: 0, match: false, matchRange: [0, 4] },
-            { ent: 'カネローニ', match: false },
-            { ent: 'カネローニー', match: true, i: ['sk'] },
-          ],
-          s: [
-            {
-              g: [{ str: 'cannelloni' }, { str: 'canneloni' }],
-              pos: ['n'],
-              field: ['food'],
-              lsrc: [{ lang: 'it' }],
-              match: true,
-            },
-          ],
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1037940,
+            k: [],
+            r: [
+              { ent: 'カネロニ', a: 0, match: false, matchRange: [0, 4] },
+              { ent: 'カネローニ', match: false },
+              { ent: 'カネローニー', match: true, i: ['sk'] },
+            ],
+            s: [
+              {
+                g: [{ str: 'cannelloni' }, { str: 'canneloni' }],
+                pos: ['n'],
+                field: ['food'],
+                lsrc: [{ lang: 'it' }],
+                match: true,
+              },
+            ],
+          },
         },
-      })
-    ).toEqual('カネロニ, カネローニ (n) (food) cannelloni; canneloni (it)');
+        { getMessage }
+      )
+    ).toEqual('カネロニ, カネローニ\n(n) (food) cannelloni; canneloni (it)');
+  });
+
+  it('simplifies the result of a word search when the corresponding flags are set', () => {
+    expect(
+      getEntryToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1589220,
+            k: [
+              {
+                ent: '落ち着く',
+                p: ['i1'],
+                match: true,
+                wk: 14,
+                bv: { l: 2 },
+                matchRange: [0, 4],
+              },
+              { ent: '落ちつく', p: ['n2', 'nf36'], match: false },
+              { ent: '落着く', match: false },
+              { ent: '落ち付く', i: ['rK'], match: false },
+              { ent: '落付く', i: ['sK'], match: false },
+            ],
+            r: [
+              { ent: 'おちつく', p: ['i1', 'n2', 'nf36'], a: 0, match: true },
+            ],
+            s: [
+              {
+                g: [
+                  { str: 'to calm down' },
+                  { str: 'to compose oneself' },
+                  { str: 'to regain presence of mind' },
+                  { str: 'to relax' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to calm down' },
+                  { str: 'to settle down' },
+                  { str: 'to die down' },
+                  { str: 'to become stable' },
+                  { str: 'to abate' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to settle down (in a location, job, etc.)' },
+                  { str: 'to settle in' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  {
+                    str: 'to be settled (of an arrangement, conclusion, etc.)',
+                  },
+                  { str: 'to be fixed' },
+                  { str: 'to have been reached' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to harmonize with' },
+                  { str: 'to harmonise with' },
+                  { str: 'to match' },
+                  { str: 'to suit' },
+                  { str: 'to fit' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to be unobtrusive' },
+                  { str: 'to be quiet' },
+                  { str: 'to be subdued' },
+                ],
+                pos: ['v5k', 'vi'],
+                xref: [{ k: '落ち着いた', r: 'おちついた', sense: 3 }],
+                inf: 'usu. before a noun as 落ち着いた',
+                match: true,
+              },
+            ],
+          },
+        },
+        {
+          getMessage,
+          includeAllSenses: false,
+          includeLessCommonHeadwords: false,
+          includePartOfSpeech: false,
+        }
+      )
+    ).toEqual(
+      '落ち着く [おちつく] to calm down; to compose oneself; to regain presence of mind; to relax'
+    );
   });
 
   it('prepares text from name search results', () => {
     expect(
-      getEntryToCopy({
-        type: 'name',
-        data: {
-          id: 1,
-          k: ['いぶ喜', 'いぶ希', 'いぶ記'],
-          r: ['いぶき'],
-          tr: [{ type: ['fem'], det: ['Ibuki'] }],
-          matchLen: 3,
+      getEntryToCopy(
+        {
+          type: 'name',
+          data: {
+            id: 1,
+            k: ['いぶ喜', 'いぶ希', 'いぶ記'],
+            r: ['いぶき'],
+            tr: [{ type: ['fem'], det: ['Ibuki'] }],
+            matchLen: 3,
+          },
         },
-      })
-    ).toEqual('いぶ喜, いぶ希, いぶ記 [いぶき] (fem) Ibuki');
+        { getMessage }
+      )
+    ).toEqual('いぶ喜, いぶ希, いぶ記 [いぶき]\n(fem) Ibuki');
   });
 
   it('prepares text from kanji search results', () => {
@@ -540,6 +659,7 @@ describe('getEntryToCopy', () => {
           },
         },
         {
+          getMessage,
           showKanjiComponents: true,
           kanjiReferences: [
             'radical',
@@ -564,29 +684,32 @@ describe('getEntryToCopy', () => {
 describe('getFieldsToCopy', () => {
   it('prepares text from word search results', () => {
     expect(
-      getFieldsToCopy({
-        type: 'word',
-        data: {
-          id: 1,
-          k: [{ ent: '韓国', match: true, p: ['n1', 'nf01'] }],
-          r: [{ ent: 'かんこく', match: true, p: ['n1', 'nf01'], a: 0 }],
-          s: [
-            {
-              pos: ['n', 'adj-no'],
-              g: [{ str: 'South Korea' }, { str: 'Republic of Korea' }],
-              misc: ['abbr'],
-              match: true,
-            },
-            {
-              pos: ['n', 'adj-no'],
-              g: [{ str: 'Korean Empire (1897-1910)' }],
-              misc: ['abbr'],
-              match: true,
-            },
-          ],
-          romaji: ['kankoku'],
+      getFieldsToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1,
+            k: [{ ent: '韓国', match: true, p: ['n1', 'nf01'] }],
+            r: [{ ent: 'かんこく', match: true, p: ['n1', 'nf01'], a: 0 }],
+            s: [
+              {
+                pos: ['n', 'adj-no'],
+                g: [{ str: 'South Korea' }, { str: 'Republic of Korea' }],
+                misc: ['abbr'],
+                match: true,
+              },
+              {
+                pos: ['n', 'adj-no'],
+                g: [{ str: 'Korean Empire (1897-1910)' }],
+                misc: ['abbr'],
+                match: true,
+              },
+            ],
+            romaji: ['kankoku'],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
       '韓国\tかんこく\tkankoku\t(1) (n,adj-no) (abbr) South Korea; Republic of Korea (2) (n,adj-no) (abbr) Korean Empire (1897-1910)'
     );
@@ -594,47 +717,50 @@ describe('getFieldsToCopy', () => {
 
   it('does not copy search-only kanji headwords from a word search', () => {
     expect(
-      getFieldsToCopy({
-        type: 'word',
-        data: {
-          id: 1169210,
-          k: [
-            { ent: '引き裂く', p: ['i1'], match: true },
-            { ent: '引裂く', match: true },
-            { ent: '引きさく', match: true, i: ['sK'] },
-          ],
-          r: [
-            {
-              ent: 'ひきさく',
-              p: ['i1'],
-              a: 3,
-              match: true,
-              matchRange: [0, 4],
-            },
-          ],
-          s: [
-            {
-              g: [
-                { str: 'to tear up' },
-                { str: 'to tear off' },
-                { str: 'to rip up' },
-                { str: 'to tear to pieces' },
-              ],
-              pos: ['v5k', 'vt'],
-              match: true,
-            },
-            {
-              g: [
-                { str: 'to (forcibly) separate (a couple, family, etc.)' },
-                { str: 'to force apart' },
-                { str: 'to tear apart' },
-              ],
-              pos: ['v5k', 'vt'],
-              match: true,
-            },
-          ],
+      getFieldsToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1169210,
+            k: [
+              { ent: '引き裂く', p: ['i1'], match: true },
+              { ent: '引裂く', match: true },
+              { ent: '引きさく', match: true, i: ['sK'] },
+            ],
+            r: [
+              {
+                ent: 'ひきさく',
+                p: ['i1'],
+                a: 3,
+                match: true,
+                matchRange: [0, 4],
+              },
+            ],
+            s: [
+              {
+                g: [
+                  { str: 'to tear up' },
+                  { str: 'to tear off' },
+                  { str: 'to rip up' },
+                  { str: 'to tear to pieces' },
+                ],
+                pos: ['v5k', 'vt'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to (forcibly) separate (a couple, family, etc.)' },
+                  { str: 'to force apart' },
+                  { str: 'to tear apart' },
+                ],
+                pos: ['v5k', 'vt'],
+                match: true,
+              },
+            ],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
       '引き裂く; 引裂く\tひきさく\t(1) (v5k,vt) to tear up; to tear off; to rip up; to tear to pieces (2) (v5k,vt) to (forcibly) separate (a couple, family, etc.); to force apart; to tear apart'
     );
@@ -642,42 +768,150 @@ describe('getFieldsToCopy', () => {
 
   it('does not copy search-only kana headwords from a word search', () => {
     expect(
-      getFieldsToCopy({
-        type: 'word',
-        data: {
-          id: 1037940,
-          k: [],
-          r: [
-            { ent: 'カネロニ', a: 0, match: false, matchRange: [0, 4] },
-            { ent: 'カネローニ', match: false },
-            { ent: 'カネローニー', match: true, i: ['sk'] },
-          ],
-          s: [
-            {
-              g: [{ str: 'cannelloni' }, { str: 'canneloni' }],
-              pos: ['n'],
-              field: ['food'],
-              lsrc: [{ lang: 'it' }],
-              match: true,
-            },
-          ],
+      getFieldsToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1037940,
+            k: [],
+            r: [
+              { ent: 'カネロニ', a: 0, match: false, matchRange: [0, 4] },
+              { ent: 'カネローニ', match: false },
+              { ent: 'カネローニー', match: true, i: ['sk'] },
+            ],
+            s: [
+              {
+                g: [{ str: 'cannelloni' }, { str: 'canneloni' }],
+                pos: ['n'],
+                field: ['food'],
+                lsrc: [{ lang: 'it' }],
+                match: true,
+              },
+            ],
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual('\tカネロニ; カネローニ\t(n) (food) cannelloni; canneloni (it)');
+  });
+
+  it('simplifies the result of a word search when the corresponding flags are set', () => {
+    expect(
+      getFieldsToCopy(
+        {
+          type: 'word',
+          data: {
+            id: 1589220,
+            k: [
+              {
+                ent: '落ち着く',
+                p: ['i1'],
+                match: true,
+                wk: 14,
+                bv: { l: 2 },
+                matchRange: [0, 4],
+              },
+              { ent: '落ちつく', p: ['n2', 'nf36'], match: false },
+              { ent: '落着く', match: false },
+              { ent: '落ち付く', i: ['rK'], match: false },
+              { ent: '落付く', i: ['sK'], match: false },
+            ],
+            r: [
+              { ent: 'おちつく', p: ['i1', 'n2', 'nf36'], a: 0, match: true },
+            ],
+            s: [
+              {
+                g: [
+                  { str: 'to calm down' },
+                  { str: 'to compose oneself' },
+                  { str: 'to regain presence of mind' },
+                  { str: 'to relax' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to calm down' },
+                  { str: 'to settle down' },
+                  { str: 'to die down' },
+                  { str: 'to become stable' },
+                  { str: 'to abate' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to settle down (in a location, job, etc.)' },
+                  { str: 'to settle in' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  {
+                    str: 'to be settled (of an arrangement, conclusion, etc.)',
+                  },
+                  { str: 'to be fixed' },
+                  { str: 'to have been reached' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to harmonize with' },
+                  { str: 'to harmonise with' },
+                  { str: 'to match' },
+                  { str: 'to suit' },
+                  { str: 'to fit' },
+                ],
+                pos: ['v5k', 'vi'],
+                match: true,
+              },
+              {
+                g: [
+                  { str: 'to be unobtrusive' },
+                  { str: 'to be quiet' },
+                  { str: 'to be subdued' },
+                ],
+                pos: ['v5k', 'vi'],
+                xref: [{ k: '落ち着いた', r: 'おちついた', sense: 3 }],
+                inf: 'usu. before a noun as 落ち着いた',
+                match: true,
+              },
+            ],
+          },
+        },
+        {
+          getMessage,
+          includeAllSenses: false,
+          includeLessCommonHeadwords: false,
+          includePartOfSpeech: false,
+        }
+      )
+    ).toEqual(
+      '落ち着く\tおちつく\tto calm down; to compose oneself; to regain presence of mind; to relax'
+    );
   });
 
   it('prepares text from name search results', () => {
     expect(
-      getFieldsToCopy({
-        type: 'name',
-        data: {
-          id: 1,
-          k: ['いぶ喜', 'いぶ希', 'いぶ記'],
-          r: ['いぶき'],
-          tr: [{ type: ['fem'], det: ['Ibuki'] }],
-          matchLen: 3,
+      getFieldsToCopy(
+        {
+          type: 'name',
+          data: {
+            id: 1,
+            k: ['いぶ喜', 'いぶ希', 'いぶ記'],
+            r: ['いぶき'],
+            tr: [{ type: ['fem'], det: ['Ibuki'] }],
+            matchLen: 3,
+          },
         },
-      })
+        { getMessage }
+      )
     ).toEqual(
       'いぶ喜\tいぶき\t(fem) Ibuki\nいぶ希\tいぶき\t(fem) Ibuki\nいぶ記\tいぶき\t(fem) Ibuki'
     );
@@ -766,6 +1000,7 @@ describe('getFieldsToCopy', () => {
           },
         },
         {
+          getMessage,
           showKanjiComponents: true,
           kanjiReferences: [
             'radical',

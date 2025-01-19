@@ -1,342 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const htmlTests = [
-  {
-    description: 'a kanji entry',
-    queryResult: {
-      kanji: {
-        type: 'kanji',
-        data: {
-          c: '士',
-          r: {
-            on: ['シ'],
-            kun: ['さむらい'],
-            na: ['お', 'ま'],
-          },
-          m: ['gentleman', 'scholar', 'samurai', 'samurai radical (no. 33)'],
-          rad: {
-            x: 33,
-            b: '⼠',
-            k: '士',
-            na: ['さむらい'],
-            m: ['gentleman', 'scholar', 'samurai'],
-            m_lang: 'en',
-          },
-          refs: {
-            nelson_c: 1160,
-            nelson_n: 1117,
-            halpern_njecd: 3405,
-            halpern_kkld: 2129,
-            halpern_kkld_2ed: 2877,
-            heisig: 319,
-            heisig6: 341,
-            henshall: 494,
-            sh_kk: 572,
-            sh_kk2: 581,
-            kanji_in_context: 755,
-            kodansha_compact: 393,
-            skip: '4-3-2',
-            sh_desc: '3p0.1',
-            conning: 350,
-          },
-          misc: {
-            sc: 3,
-            gr: 4,
-            freq: 526,
-            jlpt: 1,
-            kk: 7,
-          },
-          m_lang: 'en',
-          comp: [],
-        },
-      },
-    },
-  },
-  {
-    description: 'a kanji entry with components',
-    queryResult: {
-      kanji: {
-        type: 'kanji',
-        data: {
-          c: '鯖',
-          r: {
-            on: ['セイ', 'ショウ'],
-            kun: ['さば'],
-          },
-          m: ['mackerel'],
-          rad: {
-            x: 195,
-            b: '⿂',
-            k: '魚',
-            na: ['うお'],
-            m: ['fish'],
-            m_lang: 'en',
-          },
-          refs: {
-            nelson_c: 5301,
-            nelson_n: 6883,
-            heisig: 2820,
-            heisig6: 2835,
-            skip: '1-11-8',
-            sh_desc: '11a8.6',
-          },
-          misc: {
-            sc: 19,
-            kk: 15,
-          },
-          comp: [
-            {
-              c: '⿂',
-              na: ['うお'],
-              m: ['fish'],
-              m_lang: 'en',
-            },
-            {
-              c: '⾭',
-              na: ['あお'],
-              m: ['blue', 'green'],
-              m_lang: 'en',
-            },
-          ],
-          m_lang: 'en',
-        },
-      },
-    },
-  },
-  {
-    description: 'a kanji entry with a base radical',
-    queryResult: {
-      kanji: {
-        type: 'kanji',
-        data: {
-          c: '抜',
-          r: {
-            on: ['バツ', 'ハツ', 'ハイ'],
-            kun: ['ぬ.く', '-ぬ.く', 'ぬ.き', 'ぬ.ける', 'ぬ.かす', 'ぬ.かる'],
-            na: ['ぬき'],
-          },
-          m: [
-            'slip out',
-            'extract',
-            'pull out',
-            'pilfer',
-            'quote',
-            'remove',
-            'omit',
-          ],
-          rad: {
-            x: 64,
-            b: '⺘',
-            k: '扌',
-            na: ['てへん'],
-            m: ['hand'],
-            m_lang: 'en',
-            base: {
-              b: '⼿',
-              k: '手',
-              na: ['て'],
-              m: ['hand'],
-              m_lang: 'en',
-            },
-          },
-          refs: {
-            nelson_c: 1854,
-            nelson_n: 2093,
-            halpern_njecd: 246,
-            halpern_kkld: 183,
-            halpern_kkld_2ed: 219,
-            heisig: 705,
-            heisig6: 761,
-            henshall: 1708,
-            sh_kk: 1713,
-            sh_kk2: 1830,
-            kanji_in_context: 769,
-            kodansha_compact: 864,
-            skip: '1-3-4',
-            sh_desc: '3c4.10',
-            conning: 1951,
-          },
-          misc: {
-            sc: 7,
-            gr: 8,
-            freq: 726,
-            jlpt: 2,
-            kk: 4,
-          },
-          comp: [
-            {
-              c: '⼇',
-              na: ['なべぶた', 'けいさん', 'けいさんかんむり'],
-              m: ['lid'],
-              m_lang: 'en',
-            },
-            {
-              c: '⼜',
-              na: ['また'],
-              m: ['or again', 'furthermore', 'on the other hand'],
-              m_lang: 'en',
-            },
-            {
-              c: '⼡',
-              na: ['ふゆがしら', 'のまたかんむり', 'のまた', 'ちかんむり'],
-              m: ['winter'],
-              m_lang: 'en',
-            },
-            {
-              c: '⺘',
-              na: ['てへん'],
-              m: ['hand'],
-              m_lang: 'en',
-            },
-          ],
-          m_lang: 'en',
-        },
-      },
-    },
-  },
-  {
-    description: 'a kanji entry that is wide',
-    queryResult: {
-      kanji: {
-        type: 'kanji',
-        data: {
-          c: '和',
-          r: {
-            py: ['he2', 'he4', 'huo2', 'huo4', 'huo5', 'hai1', 'he5'],
-            on: ['ワ', 'オ', 'カ'],
-            kun: [
-              'やわ.らぐ',
-              'やわ.らげる',
-              'なご.む',
-              'なご.やか',
-              'あ.える',
-            ],
-            na: [
-              'あい',
-              'いず',
-              'かず',
-              'かつ',
-              'かつり',
-              'かづ',
-              'たけ',
-              'ち',
-              'とも',
-              'な',
-              'にぎ',
-              'まさ',
-              'やす',
-              'よし',
-              'より',
-              'わだこ',
-              'わっ',
-            ],
-          },
-          m: ['harmony', 'Japanese style', 'peace', 'soften', 'Japan'],
-          rad: {
-            x: 30,
-            b: '⼝',
-            k: '口',
-            na: ['くち'],
-            m: ['mouth'],
-            m_lang: 'en',
-            nelson: 115,
-          },
-          refs: {
-            nelson_c: 3268,
-            nelson_n: 770,
-            halpern_njecd: 1130,
-            halpern_kkld_2ed: 1044,
-            heisig6: 963,
-            henshall: 416,
-            sh_kk2: 124,
-            kanji_in_context: 352,
-            busy_people: '3.5',
-            kodansha_compact: 326,
-            skip: '1-5-3',
-            sh_desc: '5d3.1',
-            conning: 236,
-          },
-          misc: {
-            sc: 8,
-            gr: 3,
-            freq: 124,
-            jlpt: 2,
-            kk: 8,
-          },
-          comp: [
-            {
-              c: '⼝',
-              na: ['くち'],
-              m: ['mouth'],
-              m_lang: 'en',
-            },
-            {
-              c: '⽲',
-              na: ['のぎ'],
-              m: ['two branch tree', 'grain'],
-              m_lang: 'en',
-            },
-          ],
-          m_lang: 'en',
-        },
-      },
-    },
-  },
-  {
-    description: 'a kanji entry with meta tags',
-    queryResult: {
-      kanji: {
-        type: 'kanji',
-        data: {
-          c: '蟐',
-          r: { kun: ['もみ'], on: ['ジョウ'] },
-          m: ['toad', 'mantis'],
-          rad: {
-            x: 142,
-            b: '⾍',
-            k: '虫',
-            na: ['むし'],
-            m: ['insect', 'bug', 'temper'],
-            m_lang: 'en',
-          },
-          refs: { skip: '1-6-11', sh_desc: '6d11.4', nelson_n: 5374 },
-          misc: { sc: 17, meta: ['phantom kanji', 'kokuji'] },
-          comp: [
-            {
-              c: '⼍',
-              na: ['わかんむり'],
-              m: ['crown shaped wa'],
-              m_lang: 'en',
-              k: '冖',
-            },
-            { c: '⼝', na: ['くち'], m: ['mouth'], m_lang: 'en', k: '口' },
-            {
-              c: '⼱',
-              na: ['はば'],
-              m: ['towel', 'hanging scroll', 'width'],
-              m_lang: 'en',
-              k: '巾',
-            },
-            {
-              c: '⾍',
-              na: ['むし'],
-              m: ['insect', 'bug', 'temper'],
-              m_lang: 'en',
-              k: '虫',
-            },
-            {
-              c: '⺌',
-              na: ['しょうがしら', 'しょうかんむり', 'しょう', 'なおがしら'],
-              m: ['little', 'small'],
-              m_lang: 'en',
-              k: '小',
-            },
-          ],
-          m_lang: 'en',
-          cf: [],
-        },
-        matchLen: 1,
-      },
-    },
-  },
   {
     description: 'a word search result',
     queryResult: {
@@ -345,7 +8,7 @@ const htmlTests = [
         data: [
           {
             k: [
-              { ent: '走る', p: ['i1', 'n1', 'nf10'], match: true },
+              { ent: '走る', p: ['i1', 'n1', 'nf10'], wk: 5, match: true },
               { ent: '奔る', match: false },
               { ent: '趨る', match: false },
             ],
@@ -421,7 +84,7 @@ const htmlTests = [
             s: [{ g: [{ str: 'Korean (language)' }], pos: ['n'], match: true }],
           },
           {
-            k: [{ ent: '韓国', p: ['n1', 'nf01'], match: true }],
+            k: [{ ent: '韓国', p: ['n1', 'nf01'], wk: 29, match: true }],
             r: [{ ent: 'かんこく', p: ['n1', 'nf01'], a: 0, match: true }],
             s: [
               {
@@ -526,7 +189,7 @@ const htmlTests = [
                 g: [
                   { str: 'wagon' },
                   { str: 'yamatogoto' },
-                  { str: 'six-stringed native Japanese zither', type: 1 },
+                  { str: 'six-stringed native Japanese zither', type: 'expl' },
                 ],
                 pos: ['n'],
                 misc: ['abbr'],
@@ -575,7 +238,7 @@ const htmlTests = [
             s: [{ g: [{ str: 'Korean (language)' }], pos: ['n'], match: true }],
           },
           {
-            k: [{ ent: '韓国', p: ['n1', 'nf01'], match: true }],
+            k: [{ ent: '韓国', p: ['n1', 'nf01'], wk: 29, match: true }],
             r: [{ ent: 'かんこく', p: ['n1', 'nf01'], a: 0, match: true }],
             s: [
               {
@@ -736,7 +399,7 @@ const htmlTests = [
         type: 'words',
         data: [
           {
-            k: [{ ent: '韓国', p: ['n1', 'nf01'], match: true }],
+            k: [{ ent: '韓国', p: ['n1', 'nf01'], wk: 29, match: true }],
             r: [{ ent: 'かんこく', p: ['n1', 'nf01'], a: 0, match: true }],
             s: [
               {

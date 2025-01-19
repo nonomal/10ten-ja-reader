@@ -1,20 +1,23 @@
 import { Client as BugsnagClient } from '@birchill/bugsnag-zero';
 import {
+  BITS_PER_GLOSS_TYPE,
   Gloss,
-  GLOSS_TYPE_MAX,
   GlossType,
+  GlossTypes,
   RawKanjiMeta,
   RawReadingMeta,
   RawWordSense,
+  WordResult,
 } from '@birchill/jpdict-idb';
 import { kanaToHiragana } from '@birchill/normal-jp';
 import { LRUMap } from 'lru_map';
 import browser from 'webextension-polyfill';
 
 import { stripFields } from '../utils/strip-fields';
+import { Overwrite } from '../utils/type-helpers';
 
 import { DictionaryWordResult, Sense } from './search-result';
-import { sortMatchesByPriority } from './word-match-sorting';
+import { sortWordResults } from './word-match-sorting';
 
 interface FlatFileDatabaseOptions {
   // Although the v7 API of bugsnag-js can operate on a singleton client we
@@ -30,7 +33,7 @@ type FlatFileDatabaseEvent =
 
 type FlatFileDatabaseListener = (event: FlatFileDatabaseEvent) => void;
 
-export class FlatFileDatabase {
+class FlatFileDatabase {
   bugsnag?: BugsnagClient;
   listeners: Array<FlatFileDatabaseListener> = [];
   loaded: Promise<any>;
@@ -94,24 +97,27 @@ export class FlatFileDatabase {
           requestOptions = { signal: controller.signal };
         }
 
-        timeoutId = self.setTimeout(() => {
-          timeoutId = undefined;
-          if (controller) {
-            console.error(`Load of ${url} timed out. Aborting.`);
-            if (this.bugsnag) {
-              this.bugsnag.leaveBreadcrumb(makeBreadcrumb('Aborting: ', url));
+        timeoutId = self.setTimeout(
+          () => {
+            timeoutId = undefined;
+            if (controller) {
+              console.error(`Load of ${url} timed out. Aborting.`);
+              if (this.bugsnag) {
+                this.bugsnag.leaveBreadcrumb(makeBreadcrumb('Aborting: ', url));
+              }
+              controller.abort();
+            } else {
+              // TODO: This error doesn't actually propagate and do anything
+              // useful yet. But for now at least it means Firefox 56 doesn't
+              // break altogether.
+              if (this.bugsnag) {
+                void this.bugsnag.notify('[Pre FF57] Load timed out');
+              }
+              throw new Error(`Load of ${url} timed out.`);
             }
-            controller.abort();
-          } else {
-            // TODO: This error doesn't actually propagate and do anything
-            // useful yet. But for now at least it means Firefox 56 doesn't
-            // break altogether.
-            if (this.bugsnag) {
-              void this.bugsnag.notify('[Pre FF57] Load timed out');
-            }
-            throw new Error(`Load of ${url} timed out.`);
-          }
-        }, TIMEOUT_MS * (attempts + 1));
+          },
+          TIMEOUT_MS * (attempts + 1)
+        );
 
         const response = await fetch(url, requestOptions);
         const responseText = await response.text();
@@ -190,7 +196,7 @@ export class FlatFileDatabase {
     }
 
     // Sort before capping the number of results
-    sortMatchesByPriority(result);
+    sortWordResults(result);
     result.splice(maxResults);
 
     return result;
@@ -228,7 +234,7 @@ function findLineStartingWith({
   source: string;
   text: string;
 }): string | null {
-  const tlen: number = text.length;
+  const tlen = text.length;
   let start = 0;
   let end: number = source.length - 1;
 
@@ -236,7 +242,7 @@ function findLineStartingWith({
     const midpoint: number = (start + end) >> 1;
     const i: number = source.lastIndexOf('\n', midpoint) + 1;
 
-    const candidate: string = source.substr(i, tlen);
+    const candidate: string = source.substring(i, i + tlen);
     if (text < candidate) {
       end = i - 1;
     } else if (text > candidate) {
@@ -263,7 +269,7 @@ interface RawWordRecord {
   s: Array<RawWordSense>;
 }
 
-export function toDictionaryWordResult({
+function toDictionaryWordResult({
   entry,
   matchingText,
   offset,
@@ -298,10 +304,19 @@ export function toDictionaryWordResult({
   };
 }
 
+type WithExtraMetadata<T> = Overwrite<
+  T,
+  {
+    wk: WordResult['k'][0]['wk'];
+    bv: WordResult['k'][0]['bv'];
+    bg: WordResult['k'][0]['bg'];
+  }
+>;
+
 function mergeMeta<MetaType extends RawKanjiMeta | RawReadingMeta, MergedType>(
   keys: Array<string> | undefined,
   metaArray: Array<0 | MetaType> | undefined,
-  merge: (key: string, meta?: MetaType) => MergedType
+  merge: (key: string, meta?: WithExtraMetadata<MetaType>) => MergedType
 ): Array<MergedType> {
   const result: Array<MergedType> = [];
 
@@ -310,7 +325,76 @@ function mergeMeta<MetaType extends RawKanjiMeta | RawReadingMeta, MergedType>(
       metaArray && metaArray.length >= i + 1 && metaArray[i] !== 0
         ? (metaArray[i] as MetaType)
         : undefined;
-    result.push(merge(key, meta));
+
+    // The following is taken from jpdict-idb's `makeWordResult` function.
+    //
+    // WaniKani levels are stored in the `p` (priority) field for simplicity
+    // in the form `wk{N}` where N is the level number.
+    // We need to extract any such levels and store them in the `wk` field
+    // instead.
+    //
+    // Likewise for Bunpro levels which need to be combined with an `bv` /
+    // `bg` fields since these contain the original source text for a fuzzy
+    // match.
+    let wk: number | undefined;
+    let bv: number | undefined;
+    let bg: number | undefined;
+
+    const p = meta?.p?.filter((p) => {
+      if (/^wk\d+$/.test(p)) {
+        const wkLevel = parseInt(p.slice(2), 10);
+        if (typeof wk === 'undefined' || wkLevel < wk) {
+          wk = wkLevel;
+        }
+        return false;
+      }
+
+      if (/^bv\d+$/.test(p)) {
+        const bvLevel = parseInt(p.slice(2), 10);
+        if (typeof bv === 'undefined' || bvLevel < bv) {
+          bv = bvLevel;
+        }
+        return false;
+      }
+
+      if (/^bg\d+$/.test(p)) {
+        const bgLevel = parseInt(p.slice(2), 10);
+        if (typeof bg === 'undefined' || bgLevel < bg) {
+          bg = bgLevel;
+        }
+        return false;
+      }
+
+      return true;
+    });
+
+    if (p?.length) {
+      meta!.p = p;
+    } else {
+      delete meta?.p;
+    }
+
+    const extendedMeta = meta as WithExtraMetadata<MetaType> | undefined;
+
+    if (wk) {
+      extendedMeta!.wk = wk;
+    }
+
+    if (typeof bv === 'number') {
+      extendedMeta!.bv = Object.assign(
+        { l: bv },
+        meta?.bv ? { src: meta?.bv } : undefined
+      );
+    }
+
+    if (typeof bg === 'number') {
+      extendedMeta!.bg = Object.assign(
+        { l: bg },
+        meta?.bg ? { src: meta?.bg } : undefined
+      );
+    }
+
+    result.push(merge(key, extendedMeta));
   }
 
   return result;
@@ -324,14 +408,12 @@ function expandSenses(senses: Array<RawWordSense>): Array<Sense> {
   }));
 }
 
-const BITS_PER_GLOSS_TYPE = Math.floor(Math.log2(GLOSS_TYPE_MAX)) + 1;
-
 function expandGlosses(sense: RawWordSense): Array<Gloss> {
   // Helpers to work out the gloss type
   const gt = sense.gt || 0;
   const typeMask = (1 << BITS_PER_GLOSS_TYPE) - 1;
   const glossTypeAtIndex = (i: number): GlossType => {
-    return (gt >> (i * BITS_PER_GLOSS_TYPE)) & typeMask;
+    return GlossTypes[(gt >> (i * BITS_PER_GLOSS_TYPE)) & typeMask];
   };
 
   return sense.g.map((gloss, i) => {
@@ -341,7 +423,7 @@ function expandGlosses(sense: RawWordSense): Array<Gloss> {
     const result: Gloss = { str: gloss };
 
     const type = glossTypeAtIndex(i);
-    if (type !== GlossType.None) {
+    if (type !== 'none') {
       result.type = type;
     }
 

@@ -1,16 +1,18 @@
 import {
-  allMajorDataSeries,
-  cancelUpdateWithRetry,
-  clearCachedVersionInfo,
   DataSeries,
   JpdictIdb,
   MajorDataSeries,
-  toUpdateErrorState,
   UpdateErrorState,
+  allMajorDataSeries,
+  cancelUpdateWithRetry,
+  clearCachedVersionInfo,
+  toUpdateErrorState,
   updateWithRetry,
 } from '@birchill/jpdict-idb';
 
 import { requestIdleCallbackPromise } from '../utils/request-idle-callback';
+
+import { JpdictState } from './jpdict';
 import {
   JpdictEvent,
   leaveBreadcrumb,
@@ -18,7 +20,6 @@ import {
   notifyDbUpdateComplete,
   notifyError,
 } from './jpdict-events';
-import { JpdictState } from './jpdict';
 
 export type JpdictListener = (event: JpdictEvent) => void;
 
@@ -111,10 +112,10 @@ export class JpdictLocalBackend implements JpdictBackend {
         }
       }
 
-      this.db = new JpdictIdb({ verbose: true });
-      this.db.addChangeListener(this.doDbStateNotification);
-
       try {
+        this.db = new JpdictIdb({ verbose: true });
+        this.db.addChangeListener(this.doDbStateNotification);
+
         await this.db.ready;
         return this.db;
       } catch (e) {
@@ -161,6 +162,71 @@ export class JpdictLocalBackend implements JpdictBackend {
       wasForcedUpdate = this.currentUpdate.forceUpdate;
       this.cancelUpdateDb();
       this.currentUpdate = undefined;
+    }
+
+    // Firefox 112+ (and presumably Thunderbird 112+) has an unfortunate bug
+    // where, when we try to clear an objectStore, it just hangs:
+    //
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1860486
+    //
+    // Until that bug is fixed (or we replace our database storage entirely), we
+    // need to detect when we are likely to want to clear an object store and
+    // simply blow away the whole database and replace it.
+    //
+    // That's quite unfortunate because it means we'll need to download all the
+    // names data again which is massive but it's better than having the user be
+    // stuck.
+    if (hasBuggyObjectStoreClear()) {
+      // Check if we need to replace the data, i.e. if running an update is
+      // likely to try and clear a data series' object store.
+      //
+      // There are basically two cases where this happens:
+      //
+      // 1. We are changing the language
+      //
+      // 2. The major/minor version of a data series has changed
+      //
+      // Working out if the language is changed is hard. Not all series have all
+      // languages so a mismatch between the passed-in `lang` and the series'
+      // language doesn't necessarily mean that the language has changed.
+      //
+      // Instead, if there are _no_ series that match the language we can assume
+      // it has changed.
+      const langChanged =
+        this.db &&
+        this.db.kanji.state === 'ok' &&
+        this.db.kanji.version?.lang !== lang &&
+        this.db.radicals.state === 'ok' &&
+        this.db.radicals.version?.lang !== lang &&
+        this.db.words.state === 'ok' &&
+        this.db.words.version?.lang !== lang;
+
+      // Working out if the major/minor version has changed is impossible
+      // without either:
+      //
+      // 1. Duplicating the logic to download the version info metadata here and
+      //    comparing it, or
+      //
+      // 2. Passing some sort of flag into `updateWithRetry` to indicate that
+      //    if the version has changed we should replace the database.
+      //
+      // Both are very invasive so we'll just have to commit to not updating the
+      // major/minor version until either the bug is fixed in Firefox or we
+      // replace our database storage.
+
+      if (langChanged) {
+        try {
+          this.notifyListeners(
+            leaveBreadcrumb({
+              message:
+                'Detected language change on buggy version of Firefox. Replacing database.',
+            })
+          );
+          await this.initDb();
+        } catch (error) {
+          this.notifyListeners(notifyError({ error }));
+        }
+      }
     }
 
     const onUpdateError =
@@ -275,7 +341,7 @@ export class JpdictLocalBackend implements JpdictBackend {
     const lastCheck = getLatestCheckTime(this.db);
     const updateState = this.currentUpdate
       ? this.db[this.currentUpdate.series].updateState
-      : { type: <const>'idle', lastCheck };
+      : { type: 'idle' as const, lastCheck };
 
     const state: JpdictState = {
       words: {
@@ -316,4 +382,17 @@ function getLatestCheckTime(db: JpdictIdb): Date | null {
   );
 
   return latestCheckAsNumber !== 0 ? new Date(latestCheckAsNumber) : null;
+}
+
+function hasBuggyObjectStoreClear() {
+  const userAgent = navigator.userAgent;
+  const firefoxOrThunderbird = /(Firefox|Thunderbird)\/(\d+)/.exec(userAgent);
+  if (firefoxOrThunderbird && firefoxOrThunderbird[2]) {
+    const version = parseInt(firefoxOrThunderbird[2], 10);
+    // The bug has been fixed in Firefox 123.
+    return (
+      version >= 112 && (firefoxOrThunderbird[1] !== 'Firefox' || version < 123)
+    );
+  }
+  return false;
 }

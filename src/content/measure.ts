@@ -1,14 +1,15 @@
 import {
   getCombinedCharRange,
   getNegatedCharRange,
-  startsWithNumber,
+  startsWithDigit,
+  startsWithNumeral,
 } from '../utils/char-range';
 
 import { parseNumber } from './numbers';
 
 export function lookForMeasure({
   nodeText,
-  textDelimiter: originalTextDelimeter,
+  textDelimiter: originalTextDelimiter,
 }: {
   nodeText: string;
   textDelimiter: RegExp;
@@ -16,16 +17,14 @@ export function lookForMeasure({
   textDelimiter: RegExp;
   textEnd: number;
 } | null {
-  if (!startsWithNumber(nodeText)) {
+  if (!startsWithNumeral(nodeText)) {
     return null;
   }
 
-  // getTextFromTextNode should already have expanded this range to include
-  // half-width numbers and serparators so we just need to add the units and
-  // space characters.
+  const includeSeparators = startsWithDigit(nodeText);
   const japaneseOrUnit = getCombinedCharRange([
-    getNegatedCharRange(originalTextDelimeter),
-    /[\sm2㎡²]/,
+    getNegatedCharRange(originalTextDelimiter),
+    includeSeparators ? /[\sm2㎡²,、.．]/ : /[\sm2㎡²]/,
   ]);
   const textDelimiter = getNegatedCharRange(japaneseOrUnit);
 
@@ -37,7 +36,7 @@ export function lookForMeasure({
 
 export type MeasureMeta = {
   type: 'measure';
-  unit: '帖' | '畳' | 'm2';
+  unit: '帖' | '畳' | 'm2' | 'sq ft';
   value: number;
   matchLen: number;
 };
@@ -98,7 +97,7 @@ export function extractMeasureMetadata(text: string): MeasureMeta | undefined {
 }
 
 export type ConvertedMeasure = {
-  unit: '帖' | '畳' | 'm2';
+  unit: '帖' | '畳' | 'm2' | 'sq ft';
   value: number;
   alt?: Array<AlternateMeasure>;
 };
@@ -106,7 +105,7 @@ export type ConvertedMeasure = {
 export type AlternateMeasure = {
   type: 'kyouma' | 'chuukyouma' | 'edoma' | 'danchima';
   label?: string;
-  unit: '畳' | 'm2';
+  unit: '畳' | 'm2' | 'sq ft';
   value: number;
 };
 
@@ -121,7 +120,10 @@ const alternateJouSizes: Array<{
   { type: 'danchima', label: '団地間', ratio: 1.445 },
 ];
 
-export function convertMeasure(measure: MeasureMeta): ConvertedMeasure {
+export function convertMeasure(
+  measure: MeasureMeta,
+  preferredUnits: 'metric' | 'imperial'
+): ConvertedMeasure {
   if (measure.unit === 'm2') {
     return {
       unit: '帖',
@@ -135,7 +137,7 @@ export function convertMeasure(measure: MeasureMeta): ConvertedMeasure {
     };
   }
 
-  return {
+  const m2Conversion: ConvertedMeasure = {
     unit: 'm2',
     value: measure.value * 1.62,
     alt:
@@ -150,4 +152,24 @@ export function convertMeasure(measure: MeasureMeta): ConvertedMeasure {
           }))
         : undefined,
   };
+
+  // Since feet are defined in terms of meters,
+  // we can do the conversion from the metric one.
+  if (preferredUnits === 'imperial') {
+    const m2f = 10.763915;
+    return {
+      unit: 'sq ft',
+      value: m2Conversion.value * m2f,
+      alt: m2Conversion.alt
+        ? m2Conversion.alt.map(({ type, label, value }) => ({
+            type,
+            label,
+            unit: 'sq ft',
+            value: value * m2f,
+          }))
+        : undefined,
+    };
+  }
+
+  return m2Conversion;
 }

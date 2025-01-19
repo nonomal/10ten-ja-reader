@@ -1,10 +1,12 @@
 import { MajorDataSeries } from '@birchill/jpdict-idb';
 import browser from 'webextension-polyfill';
 
-import { QueryResult } from '../query';
-import { DisplayMode } from '../popup-state';
 import { html } from '../../utils/builder';
 import { getMouseCapabilityMql } from '../../utils/device';
+import { isFenix } from '../../utils/ua-utils';
+
+import { DisplayMode } from '../popup-state';
+import type { QueryResult } from '../query';
 
 import { renderCloseButton } from './close';
 import {
@@ -19,22 +21,22 @@ import { getLangTag } from './lang-tag';
 export function renderTabBar({
   closeShortcuts,
   displayMode,
+  enabledTabs,
   onClosePopup,
   onShowSettings,
   onSwitchDictionary,
   onTogglePin,
   pinShortcuts,
-  queryResult,
   selectedTab,
 }: {
   closeShortcuts?: ReadonlyArray<string>;
   displayMode: DisplayMode;
+  enabledTabs: Record<MajorDataSeries, boolean>;
   onClosePopup?: () => void;
   onShowSettings?: () => void;
   onSwitchDictionary?: (newDict: MajorDataSeries) => void;
   onTogglePin?: () => void;
   pinShortcuts?: ReadonlyArray<string>;
-  queryResult?: QueryResult;
   selectedTab: MajorDataSeries;
 }): HTMLElement {
   const tabBar = html('div', { class: 'tab-bar', lang: getLangTag() });
@@ -58,7 +60,7 @@ export function renderTabBar({
 
     if (series === selectedTab) {
       li.setAttribute('aria-selected', 'true');
-    } else if (!queryResult || !queryResult[series]) {
+    } else if (!enabledTabs[series]) {
       li.classList.add('disabled');
     }
 
@@ -98,7 +100,15 @@ export function renderTabBar({
     tabBar.append(renderPinButton(onTogglePin, pinShortcuts || []));
   }
 
-  if (onShowSettings) {
+  // Firefox for Android has a bug that when calling
+  // `browser.runtime.openOptionsPage` a new tab is opened but nothing is
+  // displayed.
+  //
+  // See: https://bugzilla.mozilla.org/show_bug.cgi?id=1795449
+  //
+  // Until that is fixed, we don't show the settings button on Firefox for
+  // Android to avoid confusion.
+  if (onShowSettings && !isFenix()) {
     tabBar.append(renderSettingsButton(onShowSettings));
   }
 
@@ -147,4 +157,17 @@ function renderSettingsButton(onShowSettings: () => void): HTMLElement {
   settingsButton.onclick = onShowSettings;
 
   return html('div', { class: 'settings' }, settingsButton);
+}
+
+// We have some slightly complicated logic to determine if we show the words
+// tab.
+//
+// Basically, we show the words tab if there are word results OR we have
+// metadata to show and NO name results (since if we have name results we can
+// show the metadata there instead).
+export function showWordsTab(
+  queryResult: QueryResult,
+  hasMeta: boolean
+): boolean {
+  return !!queryResult.words || (hasMeta && !queryResult.names);
 }

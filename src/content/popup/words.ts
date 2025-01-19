@@ -1,26 +1,30 @@
 import {
   Gloss,
-  GlossType,
-  groupSenses,
   KanjiInfo,
   LangSource,
   ReadingInfo,
+  groupSenses,
 } from '@birchill/jpdict-idb';
 import { countMora, moraSubstring } from '@birchill/normal-jp';
+import { h, render } from 'preact';
 import browser from 'webextension-polyfill';
 
 import { Sense, WordResult } from '../../background/search-result';
-import { NamePreview } from '../query';
-import { PopupOptions, StartCopyCallback } from './popup';
-
-import { renderMetadata } from './metadata';
-import { renderName } from './names';
+import { PartOfSpeechDisplay } from '../../common/content-config-params';
+import { highPriorityLabels } from '../../common/priority-labels';
 import { html } from '../../utils/builder';
-import { getSelectedIndex } from './selected-index';
-import { popupHasSelectedText } from './selection';
-import { getLangTag } from './lang-tag';
-import { renderStar } from './icons';
+import { getFilteredTags } from '../../utils/verb-tags';
+
+import { NamePreview } from '../query';
+
+import { NameEntry } from './Names/NameEntry';
 import { CopyState } from './copy-state';
+import { renderStar } from './icons';
+import { getLangTag } from './lang-tag';
+import { renderMetadata } from './metadata';
+import { getSelectedIndex } from './selected-index';
+import { containerHasSelectedText } from './selection';
+import type { ShowPopupOptions, StartCopyCallback } from './show-popup';
 
 export function renderWordEntries({
   entries,
@@ -34,7 +38,7 @@ export function renderWordEntries({
   matchLen: number;
   more: boolean;
   namePreview: NamePreview | undefined;
-  options: PopupOptions;
+  options: ShowPopupOptions;
   title: string | undefined;
 }): HTMLElement {
   const container = html('div', { class: 'wordlist entry-data' });
@@ -55,6 +59,7 @@ export function renderWordEntries({
   if (options.meta) {
     const metadata = renderMetadata({
       fxData: options.fxData,
+      preferredUnits: options.preferredUnits,
       isCombinedResult: true,
       matchLen,
       meta: options.meta,
@@ -66,7 +71,7 @@ export function renderWordEntries({
 
   const numNames = namePreview?.names.length ?? 0;
   const totalEntries = entries.length + numNames;
-  const selectedIndex = getSelectedIndex(options, totalEntries);
+  const selectedIndex = getSelectedIndex(options.copyState, totalEntries);
 
   if (namePreview) {
     container.append(
@@ -79,8 +84,28 @@ export function renderWordEntries({
   }
 
   let lastPointerType = 'touch';
+  let longestMatch = 0;
 
   for (const [index, entry] of entries.entries()) {
+    // Work out where the fold is so we can make later entries appear in the
+    // scrolled-out-of-view range.
+    const matchLength = Math.max(
+      ...entry.k
+        .filter((k) => k.matchRange)
+        .map((k) => k.matchRange![1] - k.matchRange![0]),
+      ...entry.r
+        .filter((r) => r.matchRange)
+        .map((r) => r.matchRange![1] - r.matchRange![0]),
+      0
+    );
+    if (matchLength < longestMatch) {
+      container.append(html('div', { class: 'fold-point' }));
+      // Prevent adding any more fold points
+      longestMatch = -Infinity;
+    } else if (!longestMatch) {
+      longestMatch = matchLength;
+    }
+
     const entryDiv = html('div', { class: 'entry' });
     container.append(entryDiv);
 
@@ -94,8 +119,13 @@ export function renderWordEntries({
       lastPointerType = evt.pointerType;
     });
 
-    entryDiv.addEventListener('click', () => {
-      if (popupHasSelectedText(container)) {
+    entryDiv.addEventListener('click', (evt) => {
+      if (containerHasSelectedText(container)) {
+        return;
+      }
+
+      // Don't trigger copy mode if we clicked a nested link
+      if (evt.target instanceof HTMLAnchorElement) {
         return;
       }
 
@@ -108,7 +138,31 @@ export function renderWordEntries({
 
     const matchedOnKana = entry.r.some((r) => r.matchRange);
 
-    // Exclude any search-only kanji headwords
+    // If we matched on a search-only kanji or kana headword we want to show it
+    // prior to the main entry.
+    const matchedOnlyOnSearchOnlyKanji =
+      !matchedOnKana && entry.k.every((k) => !k.match || k.i?.includes('sK'));
+    const matchedOnlyOnSearchOnlyKana =
+      matchedOnKana && entry.r.every((r) => !r.match || r.i?.includes('sk'));
+    const searchOnlyMatch = matchedOnKana
+      ? matchedOnlyOnSearchOnlyKana
+        ? entry.r.find((r) => !!r.matchRange)?.ent
+        : undefined
+      : matchedOnlyOnSearchOnlyKanji
+        ? entry.k.find((k) => !!k.matchRange)?.ent
+        : undefined;
+
+    if (searchOnlyMatch) {
+      const searchOnlyDiv = html(
+        'div',
+        {
+          class: 'tp-mb-1 tp-text-sm tp-opacity-70',
+        },
+        browser.i18n.getMessage('content_sk_match_src', searchOnlyMatch)
+      );
+      headingDiv.append(searchOnlyDiv);
+    }
+
     const kanjiHeadwords = entry.k
       ? entry.k.filter((k) => !k.i?.includes('sK'))
       : [];
@@ -117,15 +171,16 @@ export function renderWordEntries({
     // be hidden since they don't apply to the kana.
     //
     // This is because we mostly only show matching kana headwords and so if we
-    // start showing kanji that don't correspond to the kana headwords the
+    // start showing kanji that don't correspond to the kana headwords, the
     // result will be misleading.
     //
     // For example, take the string さいだん. Entry 1385120 has readings
-    // さいだん and せつだん but さいだん is specifically bound to the 截断 kanji.
+    // さいだん and せつだん but さいだん is specifically bound to the 截断
+    // kanji.
     //
-    // As a result if we look up さいだん we'll mark the さいだん kana headword as a
-    // match and the 截断 kanji headword too. As per our usual processing, we'll
-    // only show the さいだん kana headword, however, not せつだん.
+    // As a result if we look up さいだん we'll mark the さいだん kana headword
+    // as a match and the 截断 kanji headword too. As per our usual processing,
+    // we'll only show the さいだん kana headword, however, not せつだん.
     //
     // If we were also to show the unmatched 切断 kanji headword we'd end up
     // displaying:
@@ -136,7 +191,6 @@ export function renderWordEntries({
     const matchingKanji = matchedOnKana
       ? kanjiHeadwords.filter((k) => k.match)
       : kanjiHeadwords;
-    const hasKanjiMatch = matchingKanji.some((k) => k.match);
 
     // Sort matched kanji entries first
     matchingKanji.sort((a, b) => Number(b.match) - Number(a.match));
@@ -148,16 +202,16 @@ export function renderWordEntries({
         }
 
         let headwordSpan = kanjiSpan;
+        const ki = new Set(kanji.i || []);
         if (
-          // Dim the non-matching kanji unless there are none (e.g. because we
-          // matched on a search-only kanji headword).
-          (hasKanjiMatch && !kanji.match) ||
-          // Dim any kanji "matches" where the reading is irregular, old, or
-          // rare.
-          (matchedOnKana &&
-            (kanji.i?.includes('iK') ||
-              kanji.i?.includes('oK') ||
-              kanji.i?.includes('rK')))
+          // Always dim search-only kanji
+          ki.has('sK') ||
+          // Dim the non-matching kanji unless there are none because we
+          // matched only on search-only kanji headwords.
+          (!kanji.match && !matchedOnlyOnSearchOnlyKanji) ||
+          // If we matched on the reading, dim any kanji headwords that are
+          // irregular, old, or rare.
+          (matchedOnKana && (ki.has('iK') || ki.has('oK') || ki.has('rK')))
         ) {
           const dimmedSpan = html('span', { class: 'dimmed' });
           kanjiSpan.append(dimmedSpan);
@@ -169,6 +223,15 @@ export function renderWordEntries({
         appendHeadwordInfo(kanji.i, headwordSpan);
         if (options.showPriority) {
           appendPriorityMark(kanji.p, headwordSpan);
+        }
+        if (options.waniKaniVocabDisplay !== 'hide' && kanji.wk) {
+          appendWaniKaniLevelTag(kanji.wk, kanji.ent, headwordSpan);
+        }
+        if (options.bunproDisplay && kanji.bv) {
+          appendBunproTag(kanji.bv, 'vocab', headwordSpan);
+        }
+        if (options.bunproDisplay && kanji.bg) {
+          appendBunproTag(kanji.bg, 'grammar', headwordSpan);
         }
       }
       headingDiv.append(kanjiSpan);
@@ -188,17 +251,19 @@ export function renderWordEntries({
           !r.match ||
           r.i?.includes('ik') ||
           r.i?.includes('ok') ||
+          r.i?.includes('rk') ||
           r.i?.includes('sk')
       );
 
+    // For search-only kanji, we show them only if they are the ONLY matches.
     const matchingKana = entry.r.filter(
       (r) =>
-        // Exclude search-only kana forms
         !r.i?.includes('sk') &&
         (r.match ||
           (matchedOnIrregularKana &&
             !r.i?.includes('ik') &&
             !r.i?.includes('ok') &&
+            !r.i?.includes('rk') &&
             !r.i?.includes('sk')))
     );
 
@@ -209,12 +274,15 @@ export function renderWordEntries({
           kanaSpan.append(html('span', { class: 'separator' }, '、'));
         }
 
-        // If we looked up by kanji, dim any kana headwords that are irregular
-        // or old.
+        // Dim irrelevant headwords
         let headwordSpan = kanaSpan;
         if (
+          // If we looked up by kanji, dim any kana headwords that are
+          // irregular, old, or rare.
           !matchedOnKana &&
-          (kana.i?.includes('ik') || kana.i?.includes('ok'))
+          (kana.i?.includes('ik') ||
+            kana.i?.includes('ok') ||
+            kana.i?.includes('rk'))
         ) {
           const dimmedSpan = html('span', { class: 'dimmed' });
           kanaSpan.append(dimmedSpan);
@@ -225,6 +293,12 @@ export function renderWordEntries({
         appendHeadwordInfo(kana.i, headwordSpan);
         if (options.showPriority) {
           appendPriorityMark(kana.p, headwordSpan);
+        }
+        if (options.bunproDisplay && kana.bv) {
+          appendBunproTag(kana.bv, 'vocab', headwordSpan);
+        }
+        if (options.bunproDisplay && kana.bg) {
+          appendBunproTag(kana.bg, 'grammar', headwordSpan);
         }
       }
       headingDiv.append(kanaSpan);
@@ -247,6 +321,15 @@ export function renderWordEntries({
     }
 
     if (options.showDefinitions) {
+      // If we have hidden all the kanji headwords, then we shouldn't show
+      // "usually kana" annotations on definitions.
+      if (!matchingKanji.length) {
+        entry.s = entry.s.map((s) => ({
+          ...s,
+          misc: s.misc?.filter((m) => m !== 'uk'),
+        }));
+      }
+
       entryDiv.append(renderDefinitions(entry, options));
     }
   }
@@ -275,17 +358,21 @@ function renderNamePreview(
   let lastPointerType = 'touch';
 
   for (const [index, name] of names.entries()) {
-    const nameEntry = renderName(name);
+    const nameEntry = html('div');
+
+    let selectState: 'unselected' | 'selected' | 'flash' = 'unselected';
     if (index === selectedIndex) {
-      nameEntry.classList.add(copyKind === 'active' ? '-selected' : '-flash');
+      selectState = copyKind === 'active' ? 'selected' : 'flash';
     }
+
+    render(h(NameEntry, { entry: name, selectState: selectState }), nameEntry);
 
     nameEntry.addEventListener('pointerup', (evt) => {
       lastPointerType = evt.pointerType;
     });
 
     nameEntry.addEventListener('click', () => {
-      if (popupHasSelectedText(container)) {
+      if (containerHasSelectedText(container)) {
         return;
       }
 
@@ -330,8 +417,13 @@ function appendHeadwordInfo(
       ik: 'ikana',
       oK: 'okanji',
       ok: 'okana',
-      uK: 'ukanji',
       rK: 'rkanji',
+      rk: 'rkana',
+      // We normally don't show search-only kanji/kana headwords unless they are
+      // exact matches. In those cases we should probably just indicate them as
+      // "irregular" kanji/kana.
+      sK: 'ikanji',
+      sk: 'ikana',
     };
     const key = specialKeys.hasOwnProperty(i)
       ? specialKeys[i as KanjiInfo | ReadingInfo]
@@ -351,21 +443,55 @@ function appendPriorityMark(
   }
 
   // These are the ones that are annotated with a (P) in the EDICT file.
-  const highPriorityLabels = ['i1', 'n1', 's1', 's2', 'g1'];
-  let highPriority = false;
-  for (const p of priority) {
-    if (highPriorityLabels.includes(p)) {
-      highPriority = true;
-      break;
-    }
-  }
+  const highPriorityLabelsSet = new Set(highPriorityLabels);
+  const highPriority = priority.some((p) => highPriorityLabelsSet.has(p));
 
   parent.append(renderStar(highPriority ? 'full' : 'hollow'));
 }
 
+function appendWaniKaniLevelTag(
+  level: number,
+  ent: string,
+  parent: ParentNode
+) {
+  parent.append(
+    html(
+      'a',
+      {
+        class: 'wk-level',
+        href: `https://wanikani.com/vocabulary/${encodeURIComponent(ent)}`,
+        target: '_blank',
+        rel: 'noreferrer',
+        title: browser.i18n.getMessage('content_wk_link_title', ent),
+      },
+      html('span', {}, String(level))
+    )
+  );
+}
+
+function appendBunproTag(
+  data: { l: number; src?: string },
+  type: 'vocab' | 'grammar',
+  parent: ParentNode
+) {
+  const label = browser.i18n.getMessage(
+    type === 'vocab' ? 'popup_bp_vocab_tag' : 'popup_bp_grammar_tag',
+    [String(data.l)]
+  );
+  const outerSpan = html(
+    'span',
+    { class: `bp-tag -${type}` },
+    html('span', {}, label)
+  );
+  if (data.src) {
+    outerSpan.append(html('span', { class: 'bp-src' }, data.src));
+  }
+  parent.append(outerSpan);
+}
+
 function renderKana(
   kana: WordResult['r'][0],
-  options: PopupOptions
+  options: ShowPopupOptions
 ): string | Element {
   const accents = kana.a;
   if (
@@ -442,7 +568,13 @@ function renderKana(
   return wrapperSpan;
 }
 
-function renderDefinitions(entry: WordResult, options: PopupOptions) {
+function renderDefinitions(
+  entry: WordResult,
+  options: {
+    dictLang?: string;
+    posDisplay: PartOfSpeechDisplay;
+  }
+) {
   const senses = entry.s.filter((s) => s.match);
   if (!senses.length) {
     return '';
@@ -496,7 +628,11 @@ function renderDefinitions(entry: WordResult, options: PopupOptions) {
         // Group heading
         const groupHeading = html('p', { class: 'w-group-head' });
 
-        for (const pos of group.pos) {
+        // Verb class tags were added to proverbs for inflection handling but
+        // aren't user-facing. Filter them out here.
+        const filteredPos = getFilteredTags(group.pos, group.misc);
+
+        for (const pos of filteredPos) {
           const posSpan = html('span', { class: 'w-pos tag' });
           if (options.posDisplay === 'expl') {
             posSpan.lang = getLangTag();
@@ -566,11 +702,18 @@ function renderDefinitions(entry: WordResult, options: PopupOptions) {
   return definitionsDiv;
 }
 
-function renderSense(sense: Sense, options: PopupOptions): DocumentFragment {
+function renderSense(
+  sense: Sense,
+  options: { posDisplay: PartOfSpeechDisplay }
+): DocumentFragment {
   const fragment = document.createDocumentFragment();
 
+  // Verb class tags were added to proverbs for inflection handling but
+  // aren't user-facing. Filter them out here.
+  const filteredPos = getFilteredTags(sense.pos, sense.misc);
+
   if (options.posDisplay !== 'none') {
-    for (const pos of sense.pos || []) {
+    for (const pos of filteredPos) {
       const posSpan = html('span', { class: 'w-pos tag' });
       switch (options.posDisplay) {
         case 'expl':
@@ -642,7 +785,7 @@ function renderSense(sense: Sense, options: PopupOptions): DocumentFragment {
     );
   }
 
-  if (sense.lsrc && sense.lsrc.length) {
+  if (sense.lsrc?.length) {
     fragment.append(renderLangSources(sense.lsrc));
   }
 
@@ -655,15 +798,8 @@ function appendGlosses(glosses: Array<Gloss>, parent: ParentNode) {
       parent.append('; ');
     }
 
-    if (gloss.type && gloss.type !== GlossType.Tm) {
-      const typeCode = {
-        [GlossType.Expl]: 'expl',
-        [GlossType.Fig]: 'fig',
-        [GlossType.Lit]: 'lit',
-      }[gloss.type];
-      const typeStr = typeCode
-        ? browser.i18n.getMessage(`gloss_type_label_${typeCode}`)
-        : '';
+    if (gloss.type && gloss.type !== 'tm' && gloss.type !== 'none') {
+      const typeStr = browser.i18n.getMessage(`gloss_type_label_${gloss.type}`);
       if (typeStr) {
         parent.append(
           html('span', { class: 'w-type', lang: getLangTag() }, `(${typeStr}) `)
@@ -672,47 +808,45 @@ function appendGlosses(glosses: Array<Gloss>, parent: ParentNode) {
     }
 
     parent.append(gloss.str);
-    if (gloss.type === GlossType.Tm) {
+    if (gloss.type === 'tm') {
       parent.append('™');
     }
   }
 }
 
-function renderLangSources(sources: Array<LangSource>): DocumentFragment {
-  const container = document.createDocumentFragment();
+function renderLangSources(sources: Array<LangSource>): HTMLElement {
+  const sourceLangSpan = html('span', { class: 'w-lsrc', lang: getLangTag() });
 
-  for (const lsrc of sources) {
-    container.append(' ');
+  const startsWithWasei = sources[0]?.wasei;
+  sourceLangSpan.append(
+    browser.i18n.getMessage(
+      startsWithWasei ? 'lang_lsrc_wasei_prefix' : 'lang_lsrc_prefix'
+    )
+  );
 
-    let prefix = lsrc.wasei
-      ? browser.i18n.getMessage('lang_label_wasei')
-      : undefined;
-    if (!prefix) {
-      prefix =
-        browser.i18n.getMessage(`lang_label_${lsrc.lang || 'en'}`) || lsrc.lang;
+  for (const [i, lsrc] of sources.entries()) {
+    if (i) {
+      sourceLangSpan.append(', ');
     }
 
-    const wrapperSpan = html(
-      'span',
-      { class: 'w-lsrc', lang: getLangTag() },
-      '('
-    );
+    const lang =
+      browser.i18n.getMessage(`lang_label_${lsrc.lang || 'en'}`) ||
+      lsrc.lang ||
+      'English';
+    const prefix = lsrc.wasei
+      ? browser.i18n.getMessage('lang_lsrc_wasei', [lang])
+      : lang;
 
-    if (prefix && lsrc.src) {
-      prefix = `${prefix}: `;
-    }
-    if (prefix) {
-      wrapperSpan.append(prefix);
-    }
+    sourceLangSpan.append(lsrc.src ? `${prefix}: ` : prefix);
 
     if (lsrc.src) {
-      wrapperSpan.append(html('span', { lang: lsrc.lang }, lsrc.src));
+      sourceLangSpan.append(
+        html('span', { lang: lsrc.lang || 'en' }, lsrc.src)
+      );
     }
-
-    wrapperSpan.append(')');
-
-    container.append(wrapperSpan);
   }
 
-  return container;
+  sourceLangSpan.append(browser.i18n.getMessage('lang_lsrc_suffix'));
+
+  return sourceLangSpan;
 }

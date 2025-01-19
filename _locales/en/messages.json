@@ -115,6 +115,10 @@
     "message": "Dictionary data is updating, incomplete results shown.",
     "description": "Status bar message shown while the dictionary is being updated and only a snapshot can be shown."
   },
+  "content_era_info_invalid": {
+    "message": "Invalid",
+    "description": "Message shown when we fail to calculate the corresponding Gregorian date of a pre-Gregorian era"
+  },
   "content_kanji_base_radical": {
     "message": "from $char$ (​$readings$​)",
     "description": "The string used to describe the base radical",
@@ -202,26 +206,6 @@
   "content_kanji_strokes_label_1": {
     "message": "1 stroke",
     "description": "The description of the number of strokes when there is exactly 1 stroke"
-  },
-  "content_mouse_onboarding_details_link": {
-    "message": "Details...",
-    "description": "Link text to page with more details"
-  },
-  "content_mouse_onboarding_disable_button": {
-    "message": "Disable",
-    "description": "Label for the button to turn off the mouse interaction"
-  },
-  "content_mouse_onboarding_explanation": {
-    "message": "You can now hover over this window with your mouse.",
-    "description": "The text explaining that it is now possibly to mouse over th e popup"
-  },
-  "content_mouse_onboarding_new": {
-    "message": "New!",
-    "description": "The prefix announcing the new feature"
-  },
-  "content_mouse_onboarding_ok_button": {
-    "message": "OK",
-    "description": "Label for the button to dismiss the onboarding prompt"
   },
   "content_names_age": {
     "message": "$years$ y.o.",
@@ -319,6 +303,34 @@
   "content_names_tag_work": {
     "message": "work"
   },
+  "content_sk_match_src": {
+    "message": "From $src$",
+    "description": "The text used to show the sK/sk (search only) text that was used to look up the entry",
+    "placeholders": {
+      "src": {
+        "content": "$1",
+        "example": "御久しぶり"
+      }
+    }
+  },
+  "content_stroke_animation_play": {
+    "message": "Play stroke animation",
+    "description": "Tooltip to show when hovering over the play button for the stroke animation"
+  },
+  "content_stroke_animation_stop": {
+    "message": "Stop stroke animation",
+    "description": "Tooltip to show when hovering over the stop button for the stroke animation"
+  },
+  "content_wk_link_title": {
+    "message": "Show WaniKani page for $content$",
+    "description": "Tooltip for kanji and vocab links to WaniKani pages.",
+    "placeholders": {
+      "content": {
+        "content": "$1",
+        "example": "光"
+      }
+    }
+  },
   "currency_data_updated_label": {
     "message": "Updated $updated$",
     "description": "Caption added to popup explaining when the currency data was last refreshed",
@@ -351,20 +363,29 @@
   "deinflect_continuous": {
     "message": "continuous"
   },
+  "deinflect_eru_uru": {
+    "message": "-eru/-uru"
+  },
+  "deinflect_humble": {
+    "message": "humble"
+  },
+  "deinflect_humble_or_kansai_dialect": {
+    "message": "humble or Kansai dialect"
+  },
   "deinflect_imperative": {
     "message": "imperative"
   },
   "deinflect_imperative_negative": {
     "message": "imperative negative"
   },
+  "deinflect_irregular": {
+    "message": "irregular"
+  },
   "deinflect_ki": {
     "message": "-ki"
   },
   "deinflect_masu_stem": {
     "message": "masu stem"
-  },
-  "deinflect_nasai": {
-    "message": "-nasai"
   },
   "deinflect_negative": {
     "message": "negative"
@@ -401,6 +422,9 @@
   },
   "deinflect_potential_or_passive": {
     "message": "potential or passive or respectful"
+  },
+  "deinflect_respectful": {
+    "message": "respectful"
   },
   "deinflect_sou": {
     "message": "-sou"
@@ -482,6 +506,14 @@
   "dial_label_tsug": {
     "message": "Tsugaru dialect",
     "description": "Label used to describe senses whose dialect is 'tsug' (Tsugaru dialect)"
+  },
+  "entry_priority_label_high": {
+    "message": "Very common word",
+    "description": "Tooltip label used when user hovers over the filled star icon (★) to indicate a very frequent word"
+  },
+  "entry_priority_label_regular": {
+    "message": "Somewhat common word",
+    "description": "Tooltip label used when user hovers over the unfilled star icon (☆) to indicate a somewhat frequent word"
   },
   "error_command_could_not_parse": {
     "message": "Could not parse command $command$",
@@ -578,6 +610,10 @@
     "message": "botany",
     "description": "Label applied to senses with the 'bot' field"
   },
+  "field_label_boxing": {
+    "message": "boxing",
+    "description": "Label applied to senses with the 'boxing' field"
+  },
   "field_label_Buddh": {
     "message": "Buddhism",
     "description": "Label applied to senses with the 'Buddh' field"
@@ -594,9 +630,17 @@
     "message": "chemistry",
     "description": "Label applied to senses with the 'chem' field"
   },
+  "field_label_chmyth": {
+    "message": "Chinese myth.",
+    "description": "Label applied to senses with the 'chmyth' field"
+  },
   "field_label_Christn": {
     "message": "Christianity",
     "description": "Label applied to senses with the 'Christn' field"
+  },
+  "field_label_civeng": {
+    "message": "civil eng.",
+    "description": "Label applied to senses with the 'civeng' field"
   },
   "field_label_cloth": {
     "message": "clothing",
@@ -641,6 +685,10 @@
   "field_label_ent": {
     "message": "entomology",
     "description": "Label applied to senses with the 'ent' field"
+  },
+  "field_label_figskt": {
+    "message": "figure skating",
+    "description": "Label applied to senses with the 'figskt' field"
   },
   "field_label_film": {
     "message": "film",
@@ -702,6 +750,14 @@
     "message": "horse racing",
     "description": "Label applied to senses with the 'horse' field"
   },
+  "field_label_internet": {
+    "message": "Internet",
+    "description": "Label applied to senses with the 'internet' field"
+  },
+  "field_label_jpmyth": {
+    "message": "Japanese myth.",
+    "description": "Label applied to senses with the 'jpmyth' field"
+  },
   "field_label_kabuki": {
     "message": "kabuki",
     "description": "Label applied to senses with the 'kabuki' field"
@@ -750,9 +806,17 @@
     "message": "military",
     "description": "Label applied to senses with the 'mil' field"
   },
+  "field_label_min": {
+    "message": "mineralogy",
+    "description": "Label applied to senses with the 'min' field"
+  },
   "field_label_mining": {
     "message": "mining",
     "description": "Label applied to senses with the 'mining' field"
+  },
+  "field_label_motor": {
+    "message": "motorsport",
+    "description": "Label applied to senses with the 'motor' field"
   },
   "field_label_music": {
     "message": "music",
@@ -802,6 +866,10 @@
     "message": "printing",
     "description": "Label applied to senses with the 'print' field"
   },
+  "field_label_prowres": {
+    "message": "wrestling",
+    "description": "Label applied to senses with the 'prowres' field"
+  },
   "field_label_psy": {
     "message": "psychiatry",
     "description": "Label applied to senses with the 'psy' field"
@@ -850,6 +918,10 @@
     "message": "sumo",
     "description": "Label applied to senses with the 'sumo' field"
   },
+  "field_label_surg": {
+    "message": "surgery",
+    "description": "Label applied to senses with the 'surg' field"
+  },
   "field_label_telec": {
     "message": "telecommunications",
     "description": "Label applied to senses with the 'telec' field"
@@ -861,6 +933,10 @@
   "field_label_tv": {
     "message": "TV",
     "description": "Label applied to senses with the 'tv' field"
+  },
+  "field_label_vet": {
+    "message": "veterinary",
+    "description": "Label applied to senses with the 'vet' field"
   },
   "field_label_vidg": {
     "message": "video games",
@@ -922,13 +998,13 @@
     "message": "old",
     "description": "Short annotation given to kanji headwords that use out-dated kanji"
   },
+  "head_info_label_rkana": {
+    "message": "rare",
+    "description": "Short annotation given to kana headwords that use rarely-used kana forms"
+  },
   "head_info_label_rkanji": {
     "message": "rare",
     "description": "Short annotation given to kanji headwords that use rarely-used kanji forms"
-  },
-  "head_info_label_ukanji": {
-    "message": "usu. kanji",
-    "description": "Short annotation given to kana headwords that are normally written in kanji alone"
   },
   "lang_label_af": {
     "message": "Afrikaans",
@@ -1082,8 +1158,12 @@
     "message": "Latin",
     "description": "Label used to describe senses whose source language is 'la' (Latin)"
   },
+  "lang_label_lt": {
+    "message": "Lithuanian",
+    "description": "Label used to describe senses whose source language is 'lt' (Lithuanian)"
+  },
   "lang_label_mi": {
-    "message": "Maori",
+    "message": "Māori",
     "description": "Label used to describe senses whose source language is 'mi' (Maori)"
   },
   "lang_label_ml": {
@@ -1186,13 +1266,13 @@
     "message": "Urdu",
     "description": "Label used to describe senses whose source language is 'ur' (Urdu)"
   },
+  "lang_label_uz": {
+    "message": "Uzbek",
+    "description": "Label used to describe senses whose source language is 'uz' (Uzbek)"
+  },
   "lang_label_vi": {
     "message": "Vietnamese",
     "description": "Label used to describe senses whose source language is 'vi' (Vietnamese)"
-  },
-  "lang_label_wasei": {
-    "message": "wasei",
-    "description": "Label used to describe senses that are Japanese constructions (of English, presumably, as opposed to wasei kango)"
   },
   "lang_label_yi": {
     "message": "Yiddish",
@@ -1201,6 +1281,27 @@
   "lang_label_zh": {
     "message": "Chinese",
     "description": "Label used to describe senses whose source language is 'zh' (Chinese)"
+  },
+  "lang_lsrc_prefix": {
+    "message": " (from ",
+    "description": "The start of the text used to indicate a source language, e.g. ' (from English)'"
+  },
+  "lang_lsrc_suffix": {
+    "message": ")",
+    "description": "The end of the text used to indicate a source language"
+  },
+  "lang_lsrc_wasei": {
+    "message": "wasei $lang$",
+    "placeholders": {
+      "lang": {
+        "content": "$1",
+        "example": "English"
+      }
+    }
+  },
+  "lang_lsrc_wasei_prefix": {
+    "message": " (",
+    "description": "The start of the text used to indicate a source language when the first source language is waseigo, e.g. ' (wasei English)'"
   },
   "lang_tag": {
     "message": "en",
@@ -1510,6 +1611,14 @@
     "message": "Compatibility",
     "description": "Heading for the section for configuring site compatibility"
   },
+  "options_copy_heading": {
+    "message": "Copy to clipboard",
+    "description": "Heading for the section for configuring the copy to clipboard feature"
+  },
+  "options_copy_preview": {
+    "message": "Preview",
+    "description": "Label preceding the copy text preview"
+  },
   "options_currency_conversion_heading": {
     "message": "Currency conversion",
     "description": "Heading for the section for configuring currency conversion"
@@ -1564,6 +1673,10 @@
     "message": "Database storage unavailable",
     "description": "Label when IndexedDB is unusable"
   },
+  "options_database_unavailable_firefox": {
+    "message": "Database storage unavailable. This may be due to Firefox being set to “Never remember history”.",
+    "description": "Label when IndexedDB is unusable with Firefox-specific help."
+  },
   "options_db_update_error": {
     "message": "Update failed: $errormessage$",
     "description": "Label when we failed to update the data for some reason",
@@ -1600,6 +1713,10 @@
   "options_dictionary_language_heading": {
     "message": "Dictionary language"
   },
+  "options_disable_toggle_shortcut": {
+    "message": "Disable toggle shortcut",
+    "description": "Label for button to disable the toggle shortcut"
+  },
   "options_downloading_data": {
     "message": "Downloading $datatype$ version $version$ (​$progress$​%)…",
     "description": "Label while we are downloading updates",
@@ -1626,6 +1743,46 @@
     "message": "licence",
     "description": "The keyword in options_edrdg_license to link to the license"
   },
+  "options_expand_all_entries": {
+    "message": "Expand all entries",
+    "description": "Leading text for options to automatically expand word or kanji entries"
+  },
+  "options_expand_kanji_label": {
+    "message": "Kanji",
+    "description": "Label for checkbox to enable automatically expanding kanji entries"
+  },
+  "options_expand_words_label": {
+    "message": "Words",
+    "description": "Label for checkbox to enable automatically expanding word entries"
+  },
+  "options_font_face_bundled": {
+    "message": "Bundled fonts",
+    "description": "Label for bundled font option."
+  },
+  "options_font_face_label": {
+    "message": "Font face",
+    "description": "Label for font face drop-down."
+  },
+  "options_font_face_system": {
+    "message": "System fonts",
+    "description": "Label for system font option."
+  },
+  "options_font_size_label": {
+    "message": "Font size",
+    "description": "Label for font size drop-down."
+  },
+  "options_font_size_large": {
+    "message": "Large",
+    "description": "Label for larger font size option."
+  },
+  "options_font_size_normal": {
+    "message": "Normal",
+    "description": "Label for default font size option."
+  },
+  "options_font_size_xl": {
+    "message": "Extra large",
+    "description": "Label for largest font size option."
+  },
   "options_general_heading": {
     "message": "General",
     "description": "Heading for common preferences."
@@ -1637,8 +1794,11 @@
     "message": "Blue"
   },
   "options_highlight_style_label": {
-    "message": "Highlight style",
-    "description": "Title for the section for selection the highlight color"
+    "message": "Text highlight style",
+    "description": "Title for the section for selection the highlight style"
+  },
+  "options_highlight_style_none": {
+    "message": "None"
   },
   "options_highlight_style_yellow": {
     "message": "Yellow"
@@ -1665,13 +1825,17 @@
     "message": "Kanji dictionary",
     "description": "Heading for options to configure what information is displayed from the kanji dictionary"
   },
+  "options_key_alternative": {
+    "message": "or",
+    "description": "The delimeter used between alternative popup keys"
+  },
   "options_keyboard_heading": {
     "message": "Keyboard",
     "description": "Heading for options to configure keyboard commands"
   },
   "options_lang_kanji_only": {
     "message": " (kanji only)",
-    "decsription": "Annotation added to language labels for languages where only the kanji data has been translated (i.e. but not the word data)"
+    "description": "Annotation added to language labels for languages where only the kanji data has been translated (i.e. but not the word data)"
   },
   "options_lang_warning_always_en": {
     "message": "English word definitions are always shown."
@@ -1693,7 +1857,7 @@
   },
   "options_lang_words_only": {
     "message": " (words only)",
-    "decsription": "Annotation added to language labels for languages where only the word data has been translated (i.e. but not the kanji data)"
+    "description": "Annotation added to language labels for languages where only the word data has been translated (i.e. but not the kanji data)"
   },
   "options_last_database_check": {
     "message": "Last check $lastcheck$",
@@ -1718,10 +1882,6 @@
   "options_mouse_interactivity_label": {
     "message": "Mouse interaction",
     "description": "Label for section for enabling mouse/touch interactivity in the popup"
-  },
-  "options_mouse_onboarding_learn_mode": {
-    "message": "Learn more about how mouse interaction works",
-    "descripion": "Text for the link to the mouse onboarding page"
   },
   "options_name_data_name": {
     "message": "name data",
@@ -1763,6 +1923,9 @@
   },
   "options_popup_copy_word_kanji": {
     "message": "Copy word or kanji"
+  },
+  "options_popup_expand_popup": {
+    "message": "Expand popup"
   },
   "options_popup_interactivity_heading": {
     "message": "Popup interactivity",
@@ -1811,6 +1974,14 @@
     "message": "None",
     "description": "Label for hiding part-of-speech labels"
   },
+  "options_restore_toggle_shortcut": {
+    "message": "Restore toggle shortcut",
+    "description": "Label for button to restore the toggle shortcut"
+  },
+  "options_show_bunpro_decks": {
+    "message": "Show Bunpro deck information",
+    "description": "Label for enabling display of Bunpro vocab and grammar deck information alongside headwords"
+  },
   "options_show_context_menu_item": {
     "message": "Show “Enable 10ten reader” in context menu",
     "description": "Option to enable context menu item with label `menu_enable_extension`"
@@ -1831,7 +2002,7 @@
     "message": "Text"
   },
   "options_show_priority": {
-    "message": "Show indicators next to common (★) and somewhat common (☆) words",
+    "message": "Show indicators next to very common (★) and somewhat common (☆) words",
     "description": "Label for enabling the ★ and ☆ markers next to dictionary headwords to indicate they occur frequently  or somewhat frequently respectively"
   },
   "options_show_puck_label": {
@@ -1852,6 +2023,18 @@
   },
   "options_show_romaji": {
     "message": "Show romaji"
+  },
+  "options_show_wanikani_levels": {
+    "message": "Show WaniKani levels",
+    "description": "Label for enabling display of WaniKani level information alongside kanji headwords"
+  },
+  "options_simplified_copy": {
+    "message": "Copy simplified entry summary",
+    "description": "Heading for the section for configuring the copy to clipboard feature"
+  },
+  "options_stroke_data_source": {
+    "message": "The kanji stroke data is provided by the KanjiVG project, which is copyright Ulrich Apel. The data is released under the Creative Commons Attribution-Share Alike 3.0 license.",
+    "description": "Attribution for pitch accent data as described here: https://github.com/mifunetoshiro/kanjium"
   },
   "options_tab_position_label": {
     "message": "Tab position",
@@ -1891,6 +2074,26 @@
     "message": "天 (Heaven)",
     "description": "Alt text for the 天 toolbar icon"
   },
+  "options_touch_enable_tap_lookup": {
+    "message": "Look up text by tapping",
+    "description": "Checkbox label for setting to enable looking up by tapping a word"
+  },
+  "options_unit_conversion_heading": {
+    "message": "Unit conversion",
+    "description": "Heading for the section for configuring unit conversion"
+  },
+  "options_units_imperial_label": {
+    "message": "Imperial",
+    "description": "Label for the 'imperial' drop-down item"
+  },
+  "options_units_label": {
+    "message": "Preferred units",
+    "description": "Label for the drop-down box for choosing the preferred units"
+  },
+  "options_units_metric_label": {
+    "message": "Metric",
+    "description": "Label for the 'metric' drop-down item"
+  },
   "options_update_check_button_label": {
     "message": "Check for updates",
     "description": "Label for the button to check for database updates"
@@ -1917,9 +2120,33 @@
       }
     }
   },
+  "popup_bp_grammar_tag": {
+    "message": "BP N​$level$​ Grammar",
+    "description": "The tag shown alongside a headword that is part of a Bunpro vocab deck indicating what level deck it is from",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "popup_bp_vocab_tag": {
+    "message": "BP N​$level$​ Vocab",
+    "description": "The tag shown alongside a headword that is part of a Bunpro vocab deck indicating what level deck it is from",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
   "popup_close_label": {
     "message": "Close",
     "description": "The aria-label associated with the button to close the popup"
+  },
+  "popup_expand_label": {
+    "message": "Expand",
+    "description": "The title associated with the button to expand the popup"
   },
   "popup_pin_label": {
     "message": "Pin popup",

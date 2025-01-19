@@ -8,7 +8,7 @@
   ],
   "imageSize": 100,
   "commit": false,
-  "commitConvention": "none",
+  "commitConvention": "angular",
   "contributors": [
     {
       "login": "SaltfishAmi",
@@ -115,7 +115,45 @@
         "bug",
         "ideas"
       ]
+    },
+    {
+      "login": "StarScape",
+      "name": "Jack Arrington",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4681820?v=4",
+      "profile": "https://jackarrington.com",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "Enellis",
+      "name": "Eneas",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6263698?v=4",
+      "profile": "https://github.com/Enellis",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "ph0ngp",
+      "name": "Phong Phan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/7910929?v=4",
+      "profile": "https://github.com/ph0ngp",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "maiself",
+      "name": "Mai Lavelle",
+      "avatar_url": "https://avatars.githubusercontent.com/u/6334580?v=4",
+      "profile": "https://github.com/maiself",
+      "contributions": [
+        "code"
+      ]
     }
   ],
-  "contributorsPerLine": 7
+  "contributorsPerLine": 7,
+  "commitType": "docs"
 }

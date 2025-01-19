@@ -10,7 +10,7 @@
   "name": "10ten Japanese Reader",
   /*#endif*/
   "author": "Brian Birtles",
-  "version": "1.14.0",
+  "version": "1.22.0",
   /*#if supports_browser_specific_settings*/
   "browser_specific_settings": {
     "gecko": {
@@ -18,13 +18,19 @@
       /*#if mail_extension */
       "strict_min_version": "91.0"
       /*#else*/
-      "strict_min_version": "69.0"
+      "strict_min_version": "113.0"
       /*#endif*/
+    /*#if mail_extension */
     }
+    /*#else*/
+    },
+    "gecko_android": {}
+    /*#endif*/
   },
   /*#endif*/
   "description": "__MSG_extension_description__",
   "default_locale": "en",
+  "minimum_chrome_version": "100",
   /*#if is_edge*/
   "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
   /*#endif*/
@@ -63,7 +69,7 @@
     "menus",
     "messagesModify",
     /*#endif*/
-    /*#if mv3*/
+    /*#if mv3&&active_tab_only*/
     "scripting",
     /*#endif*/
     "storage",
@@ -127,8 +133,8 @@
   },
   /*#endif*/
   "options_ui": {
-    /*#if supports_browser_style*/
-    "browser_style": true,
+    /*#if options_in_tab */
+    "open_in_tab": true,
     /*#endif*/
     "page": "options.html"
   },
@@ -147,19 +153,27 @@
       "matches": ["https://docs.google.com/*"],
       "js": ["10ten-ja-gdocs-bootstrap.js"],
       "all_frames": true,
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
   /*#endif*/
   /*#if mv3*/
   "web_accessible_resources": [{
-    "resources": [ "docs/introducing-the-mouse.html" ],
-    "matches": [ "<all_urls>" ],
-    "use_dynamic_url": true
+    "resources": [
+      "css/popup-fonts.css",
+      "css/selection.css",
+      "docs/introducing-the-mouse.html",
+      "fonts/*.woff2"
+    ],
+    "matches": [ "<all_urls>" ]
   }],
   /*#else*/
   "web_accessible_resources": [
-    "docs/introducing-the-mouse.html"
+    "css/popup-fonts.css",
+    "css/selection.css",
+    "docs/introducing-the-mouse.html",
+    "fonts/*.woff2"
   ],
   /*#endif*/
   /*#if supports_offline_enabled_field */

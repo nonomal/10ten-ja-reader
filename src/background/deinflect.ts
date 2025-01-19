@@ -6,7 +6,6 @@ export const enum Reason {
   PoliteVolitional,
   Chau,
   Sugiru,
-  Nasai,
   PolitePast,
   Tara,
   Tari,
@@ -16,12 +15,16 @@ export const enum Reason {
   Sou,
   Tai,
   Polite,
+  Respectful,
+  Humble,
+  HumbleOrKansaiDialect,
   Past,
   Negative,
   Passive,
   Ba,
   Volitional,
   Potential,
+  EruUru,
   CausativePassive,
   Te,
   Zu,
@@ -35,15 +38,18 @@ export const enum Reason {
   SuruNoun,
   ZaruWoEnai,
   NegativeTe,
+  Irregular,
 }
 
 export const deinflectL10NKeys: { [key: number]: string } = {
+  [Reason.Respectful]: 'deinflect_respectful',
+  [Reason.Humble]: 'deinflect_humble',
+  [Reason.HumbleOrKansaiDialect]: 'deinflect_humble_or_kansai_dialect',
   [Reason.PolitePastNegative]: 'deinflect_polite_past_negative',
   [Reason.PoliteNegative]: 'deinflect_polite_negative',
   [Reason.PoliteVolitional]: 'deinflect_polite_volitional',
   [Reason.Chau]: 'deinflect_chau',
   [Reason.Sugiru]: 'deinflect_sugiru',
-  [Reason.Nasai]: 'deinflect_nasai',
   [Reason.PolitePast]: 'deinflect_polite_past',
   [Reason.Tara]: 'deinflect_tara',
   [Reason.Tari]: 'deinflect_tari',
@@ -59,6 +65,7 @@ export const deinflectL10NKeys: { [key: number]: string } = {
   [Reason.Ba]: 'deinflect_ba',
   [Reason.Volitional]: 'deinflect_volitional',
   [Reason.Potential]: 'deinflect_potential',
+  [Reason.EruUru]: 'deinflect_eru_uru',
   [Reason.CausativePassive]: 'deinflect_causative_passive',
   [Reason.Te]: 'deinflect_te',
   [Reason.Zu]: 'deinflect_zu',
@@ -72,793 +79,8 @@ export const deinflectL10NKeys: { [key: number]: string } = {
   [Reason.SuruNoun]: 'deinflect_suru_noun',
   [Reason.ZaruWoEnai]: 'deinflect_zaru_wo_enai',
   [Reason.NegativeTe]: 'deinflect_negative_te',
+  [Reason.Irregular]: 'deinflect_irregular',
 };
-
-const deinflectRuleData: Array<[string, string, number, number, Reason]> = [
-  // -------------- 12 --------------
-  [
-    'いらっしゃいませんでした',
-    'いらっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  // -------------- 11 --------------
-  [
-    'おっしゃいませんでした',
-    'おっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  // -------------- 9 --------------
-  [
-    'いらっしゃいました',
-    'いらっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePast,
-  ],
-  [
-    'くありませんでした',
-    'い',
-    Type.Initial,
-    Type.IAdj,
-    Reason.PolitePastNegative,
-  ],
-  // -------------- 8 --------------
-  [
-    'いらっしゃいます',
-    'いらっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.Polite,
-  ],
-  [
-    'おっしゃいました',
-    'おっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePast,
-  ],
-  [
-    '仰いませんでした',
-    '仰る',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  // -------------- 7 --------------
-  [
-    'いませんでした',
-    'う',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  ['おっしゃいます', 'おっしゃる', Type.Initial, Type.GodanVerb, Reason.Polite],
-  [
-    'きませんでした',
-    'く',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'きませんでした',
-    'くる',
-    Type.Initial,
-    Type.KuruVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'ぎませんでした',
-    'ぐ',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'しませんでした',
-    'す',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'しませんでした',
-    'する',
-    Type.Initial,
-    Type.SuruVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'しませんでした',
-    'す',
-    Type.Initial,
-    Type.SuruVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'ちませんでした',
-    'つ',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'にませんでした',
-    'ぬ',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'びませんでした',
-    'ぶ',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'みませんでした',
-    'む',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  [
-    'りませんでした',
-    'る',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.PolitePastNegative,
-  ],
-  // -------------- 6 --------------
-  [
-    'いらっしゃい',
-    'いらっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.MasuStem,
-  ],
-  [
-    'いらっしゃい',
-    'いらっしゃる',
-    Type.Initial,
-    Type.GodanVerb,
-    Reason.Imperative,
-  ],
-  ['くありません', 'い', Type.Initial, Type.IAdj, Reason.PoliteNegative],
-  ['ざるをえない', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['ざるを得ない', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  [
-    'ませんでした',
-    'る',
-    Type.Initial,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.PolitePastNegative,
-  ],
-  ['のたもうたら', 'のたまう', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['のたもうたり', 'のたまう', Type.Initial, Type.GodanVerb, Reason.Tari],
-  // -------------- 5 --------------
-  ['いましょう', 'う', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['仰いました', '仰る', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['おっしゃい', 'おっしゃる', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['おっしゃい', 'おっしゃる', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['きましょう', 'く', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['きましょう', 'くる', Type.Initial, Type.KuruVerb, Reason.PoliteVolitional],
-  ['ぎましょう', 'ぐ', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['ざるえない', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['ざる得ない', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['ざるをえぬ', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['ざるを得ぬ', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['しましょう', 'す', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['しましょう', 'する', Type.Initial, Type.SuruVerb, Reason.PoliteVolitional],
-  ['しましょう', 'す', Type.Initial, Type.SuruVerb, Reason.PoliteVolitional],
-  ['ちましょう', 'つ', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['にましょう', 'ぬ', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['のたもうた', 'のたまう', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['のたもうて', 'のたまう', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['びましょう', 'ぶ', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['みましょう', 'む', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  ['りましょう', 'る', Type.Initial, Type.GodanVerb, Reason.PoliteVolitional],
-  // -------------- 4 --------------
-  ['いじゃう', 'ぐ', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['いすぎる', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['いちゃう', 'く', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['いったら', 'いく', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['いったり', 'いく', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['いている', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['いでいる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['いなさい', 'う', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['いました', 'う', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['いません', 'う', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['おうたら', 'おう', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['おうたり', 'おう', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['仰います', '仰る', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['かされる', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['かったら', 'い', Type.Initial, Type.IAdj, Reason.Tara],
-  ['かったり', 'い', Type.Initial, Type.IAdj, Reason.Tari],
-  ['がされる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['きすぎる', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['きすぎる', 'くる', Type.IchidanVerb, Type.KuruVerb, Reason.Sugiru],
-  ['ぎすぎる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['きちゃう', 'くる', Type.GodanVerb, Type.KuruVerb, Reason.Chau],
-  ['きている', 'くる', Type.IchidanVerb, Type.KuruVerb, Reason.Continuous],
-  ['きなさい', 'く', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['きなさい', 'くる', Type.Initial, Type.KuruVerb, Reason.Nasai],
-  ['ぎなさい', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['きました', 'く', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['きました', 'くる', Type.Initial, Type.KuruVerb, Reason.PolitePast],
-  ['ぎました', 'ぐ', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['きません', 'く', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['きません', 'くる', Type.Initial, Type.KuruVerb, Reason.PoliteNegative],
-  ['ぎません', 'ぐ', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['こうたら', 'こう', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['こうたり', 'こう', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['こさせる', 'くる', Type.IchidanVerb, Type.KuruVerb, Reason.Causative],
-  [
-    'こられる',
-    'くる',
-    Type.IchidanVerb,
-    Type.KuruVerb,
-    Reason.PotentialOrPassive,
-  ],
-  ['ざるえぬ', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  ['ざる得ぬ', 'ない', Type.IAdj, Type.VNai, Reason.ZaruWoEnai],
-  [
-    'しすぎる',
-    'す',
-    Type.IchidanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Sugiru,
-  ],
-  ['しすぎる', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Sugiru],
-  [
-    'しちゃう',
-    'す',
-    Type.GodanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Chau,
-  ],
-  ['しちゃう', 'する', Type.GodanVerb, Type.SuruVerb, Reason.Chau],
-  [
-    'している',
-    'す',
-    Type.IchidanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Continuous,
-  ],
-  ['している', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Continuous],
-  [
-    'しなさい',
-    'す',
-    Type.Initial,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Nasai,
-  ],
-  ['しなさい', 'する', Type.Initial, Type.SuruVerb, Reason.Nasai],
-  [
-    'しました',
-    'す',
-    Type.Initial,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.PolitePast,
-  ],
-  ['しました', 'する', Type.Initial, Type.SuruVerb, Reason.PolitePast],
-  [
-    'しません',
-    'す',
-    Type.Initial,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.PoliteNegative,
-  ],
-  ['しません', 'する', Type.Initial, Type.SuruVerb, Reason.PoliteNegative],
-  ['そうたら', 'そう', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['そうたり', 'そう', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['たされる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['ちすぎる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['ちなさい', 'つ', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['ちました', 'つ', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['ちません', 'つ', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['っちゃう', 'う', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['っちゃう', 'く', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['っちゃう', 'つ', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['っちゃう', 'る', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['っている', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['っている', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['っている', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['とうたら', 'とう', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['とうたり', 'とう', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['なされる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['にすぎる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['になさい', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['にました', 'ぬ', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['にません', 'ぬ', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['ばされる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['びすぎる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['びなさい', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['びました', 'ぶ', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['びません', 'ぶ', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['まされる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  [
-    'ましょう',
-    'る',
-    Type.Initial,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.PoliteVolitional,
-  ],
-  ['みすぎる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['みなさい', 'む', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['みました', 'む', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['みません', 'む', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['らされる', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['りすぎる', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.Sugiru],
-  ['りなさい', 'る', Type.Initial, Type.GodanVerb, Reason.Nasai],
-  ['りました', 'る', Type.Initial, Type.GodanVerb, Reason.PolitePast],
-  ['りません', 'る', Type.Initial, Type.GodanVerb, Reason.PoliteNegative],
-  ['わされる', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.CausativePassive],
-  ['んじゃう', 'ぬ', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['んじゃう', 'ぶ', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['んじゃう', 'む', Type.GodanVerb, Type.GodanVerb, Reason.Chau],
-  ['んでいる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['んでいる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['んでいる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['行ったら', '行く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['行ったり', '行く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['逝ったら', '逝く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['逝ったり', '逝く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['往ったら', '往く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['往ったり', '往く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['逝ったら', '逝く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['逝ったり', '逝く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['往ったら', '往く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['往ったり', '往く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['請うたら', '請う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['請うたり', '請う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['乞うたら', '乞う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['乞うたり', '乞う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['恋うたら', '恋う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['恋うたり', '恋う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['来させる', '来る', Type.IchidanVerb, Type.KuruVerb, Reason.Causative],
-  ['來させる', '來る', Type.IchidanVerb, Type.KuruVerb, Reason.Causative],
-  ['来ました', '来る', Type.Initial, Type.KuruVerb, Reason.PolitePast],
-  ['来ません', '来る', Type.Initial, Type.KuruVerb, Reason.PoliteNegative],
-  ['來ました', '來る', Type.Initial, Type.KuruVerb, Reason.PolitePast],
-  ['來ません', '來る', Type.Initial, Type.KuruVerb, Reason.PoliteNegative],
-  [
-    '来られる',
-    '来る',
-    Type.IchidanVerb,
-    Type.KuruVerb,
-    Reason.PotentialOrPassive,
-  ],
-  [
-    '來られる',
-    '來る',
-    Type.IchidanVerb,
-    Type.KuruVerb,
-    Reason.PotentialOrPassive,
-  ],
-  ['問うたら', '問う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['問うたり', '問う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['負うたら', '負う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['負うたり', '負う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['沿うたら', '沿う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['沿うたり', '沿う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['添うたら', '添う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['添うたり', '添う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['副うたら', '副う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['副うたり', '副う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['厭うたら', '厭う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['厭うたり', '厭う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  // -------------- 3 --------------
-  ['いそう', 'う', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['いたい', 'う', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['いたら', 'く', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['いだら', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['いたり', 'く', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['いだり', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['いった', 'いく', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['いって', 'いく', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['いてる', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['いでる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['いとく', 'く', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['いどく', 'ぐ', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['います', 'う', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['おうた', 'おう', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['おうて', 'おう', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['かせる', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['がせる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['かった', 'い', Type.Initial, Type.IAdj, Reason.Past],
-  ['かない', 'く', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['がない', 'ぐ', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['かれる', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['がれる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['きそう', 'く', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['きそう', 'くる', Type.Initial, Type.KuruVerb, Reason.Sou],
-  ['ぎそう', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['きたい', 'く', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['きたい', 'くる', Type.IAdj, Type.KuruVerb, Reason.Tai],
-  ['ぎたい', 'ぐ', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['きたら', 'くる', Type.Initial, Type.KuruVerb, Reason.Tara],
-  ['きたり', 'くる', Type.Initial, Type.KuruVerb, Reason.Tari],
-  ['きてる', 'くる', Type.IchidanVerb, Type.KuruVerb, Reason.Continuous],
-  ['きとく', 'くる', Type.GodanVerb, Type.KuruVerb, Reason.Toku],
-  ['きます', 'く', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['きます', 'くる', Type.Initial, Type.KuruVerb, Reason.Polite],
-  ['ぎます', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['くない', 'い', Type.IAdj | Type.VNai, Type.IAdj, Reason.Negative],
-  ['ければ', 'い', Type.Initial, Type.IAdj, Reason.Ba],
-  ['こうた', 'こう', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['こうて', 'こう', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['こない', 'くる', Type.IAdj | Type.VNai, Type.KuruVerb, Reason.Negative],
-  ['こよう', 'くる', Type.Initial, Type.KuruVerb, Reason.Volitional],
-  ['これる', 'くる', Type.IchidanVerb, Type.KuruVerb, Reason.Potential],
-  ['来れる', '来る', Type.IchidanVerb, Type.KuruVerb, Reason.Potential],
-  ['來れる', '來る', Type.IchidanVerb, Type.KuruVerb, Reason.Potential],
-  ['させる', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Causative],
-  ['させる', 'る', Type.IchidanVerb, Type.IchidanVerb, Reason.Causative],
-  [
-    'させる',
-    'す',
-    Type.IchidanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Causative,
-  ],
-  ['さない', 'す', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  [
-    'される',
-    'す',
-    Type.IchidanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Passive,
-  ],
-  ['される', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Passive],
-  ['しそう', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Sou],
-  ['しそう', 'する', Type.Initial, Type.SuruVerb, Reason.Sou],
-  ['したい', 'す', Type.IAdj, Type.GodanVerb | Type.SuruVerb, Reason.Tai],
-  ['したい', 'する', Type.IAdj, Type.SuruVerb, Reason.Tai],
-  ['したら', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Tara],
-  ['したら', 'する', Type.Initial, Type.SuruVerb, Reason.Tara],
-  ['したり', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Tari],
-  ['したり', 'する', Type.Initial, Type.SuruVerb, Reason.Tari],
-  [
-    'してる',
-    'す',
-    Type.IchidanVerb,
-    Type.GodanVerb | Type.SuruVerb,
-    Reason.Continuous,
-  ],
-  ['してる', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Continuous],
-  ['しとく', 'す', Type.GodanVerb, Type.GodanVerb | Type.SuruVerb, Reason.Toku],
-  ['しとく', 'する', Type.GodanVerb, Type.SuruVerb, Reason.Toku],
-  ['しない', 'する', Type.IAdj | Type.VNai, Type.SuruVerb, Reason.Negative],
-  ['します', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Polite],
-  ['します', 'する', Type.Initial, Type.SuruVerb, Reason.Polite],
-  ['しよう', 'する', Type.Initial, Type.SuruVerb, Reason.Volitional],
-  ['すぎる', 'い', Type.IchidanVerb, Type.IAdj, Reason.Sugiru],
-  [
-    'すぎる',
-    'る',
-    Type.IchidanVerb,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Sugiru,
-  ],
-  ['そうた', 'そう', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['そうて', 'そう', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['たせる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['たない', 'つ', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['たれる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['ちそう', 'つ', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['ちたい', 'つ', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['ちます', 'つ', Type.Initial, Type.GodanVerb, Reason.Polite],
-  [
-    'ちゃう',
-    'る',
-    Type.GodanVerb,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Chau,
-  ],
-  ['ったら', 'う', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['ったら', 'つ', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['ったら', 'る', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['ったり', 'う', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['ったり', 'つ', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['ったり', 'る', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['ってる', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['ってる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['ってる', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['っとく', 'う', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['っとく', 'つ', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['っとく', 'る', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  [
-    'ている',
-    'る',
-    Type.IchidanVerb,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Continuous,
-  ],
-  ['できる', 'する', Type.IchidanVerb, Type.SuruVerb, Reason.Potential],
-  ['とうた', 'とう', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['とうて', 'とう', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['ないで', 'ない', Type.Initial, Type.VNai, Reason.NegativeTe],
-  [
-    'なさい',
-    'る',
-    Type.Initial,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Nasai,
-  ],
-  ['なせる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['なない', 'ぬ', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['なれる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['にそう', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['にたい', 'ぬ', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['にます', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['ばせる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['ばない', 'ぶ', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['ばれる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['びそう', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['びたい', 'ぶ', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['びます', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['ました', 'る', Type.Initial, Type.IchidanVerb, Reason.PolitePast],
-  ['ませる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['ません', 'る', Type.Initial, Type.IchidanVerb, Reason.PoliteNegative],
-  ['まない', 'む', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['まれる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['みそう', 'む', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['みたい', 'む', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['みます', 'む', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['らせる', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['らない', 'る', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  [
-    'られる',
-    'る',
-    Type.IchidanVerb,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.PotentialOrPassive,
-  ],
-  ['られる', 'る', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['りそう', 'る', Type.Initial, Type.GodanVerb, Reason.Sou],
-  ['りたい', 'る', Type.IAdj, Type.GodanVerb, Reason.Tai],
-  ['ります', 'る', Type.Initial, Type.GodanVerb, Reason.Polite],
-  ['わせる', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Causative],
-  ['わない', 'う', Type.IAdj | Type.VNai, Type.GodanVerb, Reason.Negative],
-  ['われる', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Passive],
-  ['んだら', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['んだら', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['んだら', 'む', Type.Initial, Type.GodanVerb, Reason.Tara],
-  ['んだり', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['んだり', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['んだり', 'む', Type.Initial, Type.GodanVerb, Reason.Tari],
-  ['んでる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['んでる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['んでる', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Continuous],
-  ['んどく', 'ぬ', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['んどく', 'ぶ', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['んどく', 'む', Type.GodanVerb, Type.GodanVerb, Reason.Toku],
-  ['行った', '行く', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['行って', '行く', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['逝った', '逝く', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['逝って', '逝く', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['往った', '往く', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['往って', '往く', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['請うた', '請う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['請うて', '請う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['乞うた', '乞う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['乞うて', '乞う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['恋うた', '恋う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['恋うて', '恋う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['問うた', '問う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['問うて', '問う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['負うた', '負う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['負うて', '負う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['沿うた', '沿う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['沿うて', '沿う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['添うた', '添う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['添うて', '添う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['副うた', '副う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['副うて', '副う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['厭うた', '厭う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['厭うて', '厭う', Type.Initial, Type.GodanVerb, Reason.Te],
-  // -------------- 2 --------------
-  ['いた', 'く', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['いだ', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['いて', 'く', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['いで', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['えば', 'う', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['える', 'う', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['おう', 'う', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['仰い', '仰る', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['仰い', '仰る', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['かず', 'く', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['がず', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['かぬ', 'く', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['かん', 'く', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['がぬ', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['がん', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['きた', 'くる', Type.Initial, Type.KuruVerb, Reason.Past],
-  ['きて', 'くる', Type.Initial, Type.KuruVerb, Reason.Te],
-  ['くて', 'い', Type.Initial, Type.IAdj, Reason.Te],
-  ['けば', 'く', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['げば', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['ける', 'く', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['げる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['こい', 'くる', Type.Initial, Type.KuruVerb, Reason.Imperative],
-  ['こう', 'く', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['ごう', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['こず', 'くる', Type.Initial, Type.KuruVerb, Reason.Zu],
-  ['こぬ', 'くる', Type.Initial, Type.KuruVerb, Reason.Negative],
-  ['こん', 'くる', Type.Initial, Type.KuruVerb, Reason.Negative],
-  ['さず', 'す', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['さぬ', 'す', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['さん', 'す', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['した', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Past],
-  ['した', 'する', Type.Initial, Type.SuruVerb, Reason.Past],
-  ['して', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Te],
-  ['して', 'する', Type.Initial, Type.SuruVerb, Reason.Te],
-  ['しろ', 'す', Type.Initial, Type.SuruVerb, Reason.Imperative],
-  ['しろ', 'する', Type.Initial, Type.SuruVerb, Reason.Imperative],
-  ['する', '', Type.SuruVerb, Type.NounVS, Reason.SuruNoun],
-  ['せず', 'する', Type.Initial, Type.SuruVerb, Reason.Zu],
-  ['せぬ', 'する', Type.Initial, Type.SuruVerb, Reason.Negative],
-  ['せん', 'する', Type.Initial, Type.SuruVerb, Reason.Negative],
-  ['せず', 'す', Type.Initial, Type.SuruVerb, Reason.Zu],
-  ['せぬ', 'す', Type.Initial, Type.SuruVerb, Reason.Negative],
-  ['せん', 'す', Type.Initial, Type.SuruVerb, Reason.Negative],
-  ['せば', 'す', Type.Initial, Type.GodanVerb | Type.SuruVerb, Reason.Ba],
-  ['せよ', 'する', Type.Initial, Type.SuruVerb, Reason.Imperative],
-  ['せよ', 'す', Type.Initial, Type.SuruVerb, Reason.Imperative],
-  ['せる', 'す', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['そう', 'い', Type.Initial, Type.IAdj, Reason.Sou],
-  ['そう', 'す', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['そう', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Sou],
-  ['たい', 'る', Type.IAdj, Type.IchidanVerb | Type.KuruVerb, Reason.Tai],
-  ['たず', 'つ', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['たぬ', 'つ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['たん', 'つ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['たら', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Tara],
-  ['たり', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Tari],
-  ['った', 'う', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['った', 'つ', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['った', 'る', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['って', 'う', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['って', 'つ', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['って', 'る', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['てば', 'つ', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['てる', 'つ', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  [
-    'てる',
-    'る',
-    Type.IchidanVerb,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Continuous,
-  ],
-  ['とう', 'つ', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['とく', 'る', Type.GodanVerb, Type.IchidanVerb | Type.KuruVerb, Reason.Toku],
-  [
-    'ない',
-    'る',
-    Type.IAdj | Type.VNai,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Negative,
-  ],
-  ['なず', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['なぬ', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['なん', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['ねば', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['ねる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['のう', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['ばず', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['ばぬ', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['ばん', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['べば', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['べる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['ぼう', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['ます', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Polite],
-  ['まず', 'む', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['まぬ', 'む', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['まん', 'む', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['めば', 'む', Type.Initial, Type.GodanVerb, Reason.Ba],
-  ['める', 'む', Type.IchidanVerb, Type.GodanVerb, Reason.Potential],
-  ['もう', 'む', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  [
-    'よう',
-    'る',
-    Type.Initial,
-    Type.IchidanVerb | Type.KuruVerb,
-    Reason.Volitional,
-  ],
-  ['らず', 'る', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['らぬ', 'る', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['らん', 'る', Type.Initial, Type.GodanVerb, Reason.Negative],
-  [
-    'れば',
-    'る',
-    Type.Initial,
-    Type.IchidanVerb | Type.GodanVerb | Type.KuruVerb | Type.SuruVerb,
-    Reason.Ba,
-  ],
-  [
-    'れる',
-    'る',
-    Type.IchidanVerb,
-    Type.IchidanVerb | Type.GodanVerb,
-    Reason.Potential,
-  ],
-  ['ろう', 'る', Type.Initial, Type.GodanVerb, Reason.Volitional],
-  ['わず', 'う', Type.Initial, Type.GodanVerb, Reason.Zu],
-  ['わぬ', 'う', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['わん', 'う', Type.Initial, Type.GodanVerb, Reason.Negative],
-  ['んだ', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['んだ', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['んだ', 'む', Type.Initial, Type.GodanVerb, Reason.Past],
-  ['んで', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['んで', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Te],
-  ['んで', 'む', Type.Initial, Type.GodanVerb, Reason.Te],
-  // -------------- 1 --------------
-  ['い', 'いる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['い', 'う', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['い', 'る', Type.Initial, Type.KuruVerb, Reason.Imperative],
-  ['え', 'う', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['え', 'える', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['き', 'きる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['き', 'く', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['き', 'くる', Type.Initial, Type.KuruVerb, Reason.MasuStem],
-  ['ぎ', 'ぎる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ぎ', 'ぐ', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['き', 'い', Type.Initial, Type.IAdj, Reason.Ki],
-  ['く', 'い', Type.Initial, Type.IAdj, Reason.Adv],
-  ['け', 'く', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['け', 'ける', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['げ', 'ぐ', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['げ', 'げる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['さ', 'い', Type.Initial, Type.IAdj, Reason.Noun],
-  ['し', 'す', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['じ', 'じる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ず', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Zu],
-  ['せ', 'す', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['せ', 'せる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ぜ', 'ぜる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['た', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Past],
-  ['ち', 'ちる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ち', 'つ', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['て', 'つ', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['て', 'てる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['て', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, Reason.Te],
-  ['で', 'でる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  [
-    'な',
-    '',
-    Type.Initial,
-    Type.IchidanVerb | Type.GodanVerb | Type.KuruVerb | Type.SuruVerb,
-    Reason.ImperativeNegative,
-  ],
-  ['に', 'にる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['に', 'ぬ', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['ぬ', 'る', Type.Initial, Type.IchidanVerb, Reason.Negative],
-  ['ん', 'る', Type.Initial, Type.IchidanVerb, Reason.Negative],
-  ['ね', 'ぬ', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['ね', 'ねる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ひ', 'ひる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['び', 'びる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['び', 'ぶ', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['へ', 'へる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['べ', 'ぶ', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['べ', 'べる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['み', 'みる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['み', 'む', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['め', 'む', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['め', 'める', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['よ', 'る', Type.Initial, Type.IchidanVerb, Reason.Imperative],
-  ['り', 'りる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['り', 'る', Type.Initial, Type.GodanVerb, Reason.MasuStem],
-  ['れ', 'る', Type.Initial, Type.GodanVerb, Reason.Imperative],
-  ['れ', 'れる', Type.Initial, Type.IchidanVerb, Reason.MasuStem],
-  ['ろ', 'る', Type.Initial, Type.IchidanVerb, Reason.Imperative],
-];
 
 const enum Type {
   // Final word type
@@ -867,34 +89,47 @@ const enum Type {
   IAdj = 1 << 2,
   KuruVerb = 1 << 3,
   SuruVerb = 1 << 4,
-  NounVS = 1 << 5,
-  All = IchidanVerb | GodanVerb | IAdj | KuruVerb | SuruVerb | NounVS,
+  SpecialSuruVerb = 1 << 5,
+  NounVS = 1 << 6,
+  All = IchidanVerb |
+    GodanVerb |
+    IAdj |
+    KuruVerb |
+    SuruVerb |
+    SpecialSuruVerb |
+    NounVS,
   // Intermediate types
-  Initial = 1 << 6, // original word before any deinflection (from-type only)
-  VNai = 1 << 7,
+  Initial = 1 << 7, // original word before any deinflection (from-type only)
+  TaTeStem = 1 << 8,
+  DaDeStem = 1 << 9,
+  MasuStem = 1 << 10,
+  IrrealisStem = 1 << 11,
 }
 
 export { Type as WordType };
 
-interface DeinflectRule {
+type DeinflectRule = {
   from: string;
   to: string;
   // A bit mask representing the type of words to which this rule can be
   // applied.
   //
-  // For example, 遊びすぎる would match the びすぎる→ぶ rule where the from
-  // type is an ichidan/ru-verb while the to type is a godan/u-verb.
+  // For example, 遊びすぎる would match the "すぎる"→"" rule where the from-type
+  // is an ichidan/ru-verb while the to-type is the intermediate type masu-stem.
+  // The remaining 遊び would then match the "び"→"ぶ" rule where the from-type
+  // is the intermediate type masu-stem while the to-type is a godan/u-verb.
   //
-  // The fromType may also have the special value Initial which means it accepts
-  // anything BUT one of the other word types.
+  // Intermediate types ensure that some rules are only applied in specific
+  // conditions.
   //
-  // For example, consider the deinflection rule that allows 食べ (imperative)
-  // to be de-inflected to 食べる: べ→べる. In this case, the to-type is an
-  // ichidan/ru-verb, while the from type is basically anything but NOT the
-  // result of any other deinflection (since they never produce verb stems).
-  // For this case we set the from-type to Initial so that it does NOT match
-  // any of the existing word types but it DOES match when we compare with 0xff
-  // (the type we use for the initial input).
+  // For example, consider the deinflection rule "ます"→"". Without the to-type
+  // masu-stem everything following--not just the correct masu stem--would
+  // match it. "食べろます" would be parsed as "< imperative < polite", which
+  // is obviously not correct.
+  //
+  // Similarly, the type Intial ensures that a rule is only applied when it
+  // is at the very end of an inflecting word, as every to-type is different
+  // from it.
   //
   // These fields are bit masks since there can be multiple types
   // accepted. For example, for the rule ませんでした→る the deinflected word
@@ -903,8 +138,263 @@ interface DeinflectRule {
   // a result, the to-type needs to represent both of these possibilities.
   fromType: number;
   toType: number;
-  reason: Reason;
-}
+  reasons: Array<Reason>;
+};
+
+// prettier-ignore
+const deinflectRuleData: Array<
+  [from: string, to: string, fromType: number, toType: number, reasons: Array<Reason>]
+> = [
+  // -------------- 7 --------------
+  ['ていらっしゃい', '', Type.Initial, Type.TaTeStem, [Reason.Respectful, Reason.Continuous, Reason.Imperative]],
+  ['ていらっしゃる', '', Type.GodanVerb, Type.TaTeStem, [Reason.Respectful, Reason.Continuous]],
+  ['でいらっしゃい', '', Type.Initial, Type.DaDeStem, [Reason.Respectful, Reason.Continuous, Reason.Imperative]],
+  ['でいらっしゃる', '', Type.GodanVerb, Type.DaDeStem, [Reason.Respectful, Reason.Continuous]],
+  // -------------- 6 --------------
+  ['いらっしゃい', 'いらっしゃる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['いらっしゃい', 'いらっしゃる', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['くありません', 'い', Type.Initial, Type.IAdj, [Reason.PoliteNegative]],
+  ['ざるをえない', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ざるを得ない', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ませんでした', '', Type.Initial, Type.MasuStem, [Reason.PolitePastNegative]],
+  ['てらっしゃい', '', Type.Initial, Type.TaTeStem, [Reason.Respectful, Reason.Continuous, Reason.Imperative]],
+  ['てらっしゃい', 'てらっしゃる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['てらっしゃる', '', Type.GodanVerb, Type.TaTeStem, [Reason.Respectful, Reason.Continuous]],
+  ['でらっしゃい', '', Type.Initial, Type.DaDeStem, [Reason.Respectful, Reason.Continuous, Reason.Imperative]],
+  ['でらっしゃい', 'でらっしゃる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['でらっしゃる', '', Type.GodanVerb, Type.DaDeStem, [Reason.Respectful, Reason.Continuous]],
+  // -------------- 5 --------------
+  ['おっしゃい', 'おっしゃる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['おっしゃい', 'おっしゃる', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['ざるえない', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ざる得ない', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ざるをえぬ', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ざるを得ぬ', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  // -------------- 4 --------------
+  ['かったら', 'い', Type.Initial, Type.IAdj, [Reason.Tara]],
+  ['かったり', 'い', Type.Initial, Type.IAdj, [Reason.Tari]],
+  ['ください', 'くださる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['ください', 'くださる', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['こさせる', 'くる', Type.IchidanVerb, Type.KuruVerb, [Reason.Causative]],
+  ['こられる', 'くる', Type.IchidanVerb, Type.KuruVerb, [Reason.PotentialOrPassive]],
+  ['さないで', 'する', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.NegativeTe]],
+  ['ざるえぬ', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['ざる得ぬ', '', Type.IAdj, Type.IrrealisStem, [Reason.ZaruWoEnai]],
+  ['しないで', 'する', Type.Initial, Type.SuruVerb, [Reason.NegativeTe]],
+  ['しさせる', 'する', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Causative]],
+  ['しられる', 'する', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.PotentialOrPassive]],
+  ['せさせる', 'する', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Causative]],
+  ['せられる', 'する', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.PotentialOrPassive]],
+  ['ぜさせる', 'ずる', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Causative]],
+  ['ぜられる', 'ずる', Type.IchidanVerb, Type.SpecialSuruVerb, [Reason.Irregular, Reason.PotentialOrPassive]],
+  ['たゆたう', 'たゆたう', Type.TaTeStem, Type.GodanVerb, []],
+  ['たゆとう', 'たゆとう', Type.TaTeStem, Type.GodanVerb, []],
+  ['のたまう', 'のたまう', Type.TaTeStem, Type.GodanVerb, []],
+  ['のたもう', 'のたもう', Type.TaTeStem, Type.GodanVerb, []],
+  ['ましたら', '', Type.Initial, Type.MasuStem, [Reason.Polite, Reason.Tara]],
+  ['ましたり', '', Type.Initial, Type.MasuStem, [Reason.Polite, Reason.Tari]],
+  ['ましょう', '', Type.Initial, Type.MasuStem, [Reason.PoliteVolitional]],
+  // -------------- 3 --------------
+  ['いたす', '', Type.GodanVerb, Type.MasuStem, [Reason.Humble]],
+  ['いたす', '', Type.GodanVerb, Type.NounVS, [Reason.SuruNoun, Reason.Humble]],
+  ['かった', 'い', Type.Initial, Type.IAdj, [Reason.Past]],
+  ['下さい', '下さる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['下さい', '下さる', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['くない', 'い', Type.IAdj, Type.IAdj, [Reason.Negative]],
+  ['ければ', 'い', Type.Initial, Type.IAdj, [Reason.Ba]],
+  ['こよう', 'くる', Type.Initial, Type.KuruVerb, [Reason.Volitional]],
+  ['これる', 'くる', Type.IchidanVerb, Type.KuruVerb, [Reason.Potential]],
+  ['来れる', '来る', Type.IchidanVerb, Type.KuruVerb, [Reason.Potential]],
+  ['來れる', '來る', Type.IchidanVerb, Type.KuruVerb, [Reason.Potential]],
+  ['ござい', 'ござる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['ご座い', 'ご座る', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['御座い', '御座る', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['させる', 'る', Type.IchidanVerb, Type.IchidanVerb | Type.KuruVerb, [Reason.Causative]],
+  ['させる', 'する', Type.IchidanVerb, Type.SuruVerb, [Reason.Causative]],
+  ['さない', 'する', Type.IAdj, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Negative]],
+  ['される', '', Type.IchidanVerb, Type.IrrealisStem, [Reason.CausativePassive]],
+  ['される', 'する', Type.IchidanVerb, Type.SuruVerb, [Reason.Passive]],
+  ['しうる', 'する', Type.Initial, Type.SuruVerb, [Reason.EruUru]],
+  ['しえる', 'する', Type.IchidanVerb, Type.SuruVerb, [Reason.EruUru]],
+  ['しない', 'する', Type.IAdj, Type.SuruVerb, [Reason.Negative]],
+  ['しよう', 'する', Type.Initial, Type.SuruVerb, [Reason.Volitional]],
+  ['じゃう', '', Type.GodanVerb, Type.DaDeStem, [Reason.Chau]],
+  ['すぎる', 'い', Type.IchidanVerb, Type.IAdj, [Reason.Sugiru]],
+  ['すぎる', '', Type.IchidanVerb, Type.MasuStem, [Reason.Sugiru]],
+  ['過ぎる', 'い', Type.IchidanVerb, Type.IAdj, [Reason.Sugiru]],
+  ['過ぎる', '', Type.IchidanVerb, Type.MasuStem, [Reason.Sugiru]],
+  ['ずれば', 'ずる', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Ba]],
+  ['たまう', 'たまう', Type.TaTeStem, Type.GodanVerb, []],
+  ['たもう', 'たもう', Type.TaTeStem, Type.GodanVerb, []],
+  ['揺蕩う', '揺蕩う', Type.TaTeStem, Type.GodanVerb, []],
+  ['ちゃう', '', Type.GodanVerb, Type.TaTeStem, [Reason.Chau]],
+  ['ている', '', Type.IchidanVerb, Type.TaTeStem, [Reason.Continuous]],
+  ['ておる', '', Type.GodanVerb, Type.TaTeStem, [Reason.HumbleOrKansaiDialect, Reason.Continuous]],
+  ['でいる', '', Type.IchidanVerb, Type.DaDeStem, [Reason.Continuous]],
+  ['でおる', '', Type.GodanVerb, Type.DaDeStem, [Reason.HumbleOrKansaiDialect, Reason.Continuous]],
+  ['できる', 'する', Type.IchidanVerb, Type.SuruVerb, [Reason.Potential]],
+  ['ないで', '', Type.Initial, Type.IrrealisStem, [Reason.NegativeTe]],
+  ['なさい', '', Type.Initial, Type.MasuStem, [Reason.Respectful, Reason.Imperative]],
+  ['なさい', 'なさる', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['なさい', 'なさる', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['なさる', '', Type.GodanVerb, Type.MasuStem, [Reason.Respectful]],
+  ['なさる', '', Type.GodanVerb, Type.NounVS, [Reason.SuruNoun, Reason.Respectful]],
+  ['になる', '', Type.GodanVerb, Type.MasuStem, [Reason.Respectful]],
+  ['になる', '', Type.GodanVerb, Type.NounVS, [Reason.SuruNoun, Reason.Respectful]],
+  ['ました', '', Type.Initial, Type.MasuStem, [Reason.PolitePast]],
+  ['まして', '', Type.Initial, Type.MasuStem, [Reason.Polite, Reason.Te]],
+  ['ません', '', Type.Initial, Type.MasuStem, [Reason.PoliteNegative]],
+  ['られる', 'る', Type.IchidanVerb, Type.IchidanVerb | Type.KuruVerb, [Reason.PotentialOrPassive]],
+  // -------------- 2 --------------
+  ['致す', '', Type.GodanVerb, Type.MasuStem, [Reason.Humble]],
+  ['致す', '', Type.GodanVerb, Type.NounVS, [Reason.SuruNoun, Reason.Humble]],
+  ['えば', 'う', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['える', 'う', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['得る', '', Type.IchidanVerb, Type.MasuStem, [Reason.EruUru]],
+  ['おう', 'う', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['仰い', '仰る', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['仰い', '仰る', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['くて', 'い', Type.Initial, Type.IAdj, [Reason.Te]],
+  ['けば', 'く', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['げば', 'ぐ', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['ける', 'く', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['げる', 'ぐ', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['こい', 'くる', Type.Initial, Type.KuruVerb, [Reason.Imperative]],
+  ['こう', 'く', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['ごう', 'ぐ', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['しろ', 'する', Type.Initial, Type.SuruVerb, [Reason.Imperative]],
+  ['さず', 'する', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Zu]],
+  ['すぎ', 'い', Type.Initial, Type.IAdj, [Reason.Sugiru]],
+  ['すぎ', '', Type.Initial, Type.MasuStem, [Reason.Sugiru]],
+  ['過ぎ', 'い', Type.Initial, Type.IAdj, [Reason.Sugiru]],
+  ['過ぎ', '', Type.Initial, Type.MasuStem, [Reason.Sugiru]],
+  ['する', '', Type.SuruVerb, Type.NounVS, [Reason.SuruNoun]],
+  ['せず', 'する', Type.Initial, Type.SuruVerb, [Reason.Zu]],
+  ['せぬ', 'する', Type.Initial, Type.SuruVerb, [Reason.Negative]],
+  ['せん', 'する', Type.Initial, Type.SuruVerb, [Reason.Negative]],
+  ['せば', 'す', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['せば', 'する', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Ba]],
+  ['せよ', 'する', Type.Initial, Type.SuruVerb, [Reason.Imperative]],
+  ['せる', 'す', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['せる', '', Type.IchidanVerb, Type.IrrealisStem, [Reason.Causative]],
+  ['ぜず', 'ずる', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Zu]],
+  ['ぜぬ', 'ずる', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Negative]],
+  ['ぜよ', 'ずる', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Imperative]],
+  ['そう', '', Type.Initial, Type.MasuStem, [Reason.Sou]],
+  ['そう', 'い', Type.Initial, Type.IAdj, [Reason.Sou]],
+  ['そう', 'す', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['そう', 'する', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Volitional]],
+  ['たい', '', Type.IAdj, Type.MasuStem, [Reason.Tai]],
+  ['たら', '', Type.Initial, Type.TaTeStem, [Reason.Tara]],
+  ['だら', '', Type.Initial, Type.DaDeStem, [Reason.Tara]],
+  ['たり', '', Type.Initial, Type.TaTeStem, [Reason.Tari]],
+  ['だり', '', Type.Initial, Type.DaDeStem, [Reason.Tari]],
+  ['てば', 'つ', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['てる', 'つ', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['てる', '', Type.IchidanVerb, Type.TaTeStem, [Reason.Continuous]],
+  ['でる', '', Type.IchidanVerb, Type.DaDeStem, [Reason.Continuous]],
+  ['とう', 'つ', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['とく', '', Type.GodanVerb, Type.TaTeStem, [Reason.Toku]],
+  ['とる', '', Type.GodanVerb, Type.TaTeStem, [Reason.HumbleOrKansaiDialect, Reason.Continuous]],
+  ['どく', '', Type.GodanVerb, Type.DaDeStem, [Reason.Toku]],
+  ['どる', '', Type.GodanVerb, Type.DaDeStem, [Reason.HumbleOrKansaiDialect, Reason.Continuous]],
+  ['ない', '', Type.IAdj, Type.IrrealisStem, [Reason.Negative]],
+  ['ねば', 'ぬ', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['ねる', 'ぬ', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['のう', 'ぬ', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['べば', 'ぶ', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['べる', 'ぶ', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['ぼう', 'ぶ', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['ます', '', Type.Initial, Type.MasuStem, [Reason.Polite]],
+  ['ませ', '', Type.Initial, Type.MasuStem, [Reason.Polite, Reason.Imperative]],
+  ['めば', 'む', Type.Initial, Type.GodanVerb, [Reason.Ba]],
+  ['める', 'む', Type.IchidanVerb, Type.GodanVerb, [Reason.Potential]],
+  ['もう', 'む', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  ['よう', 'る', Type.Initial, Type.IchidanVerb | Type.KuruVerb, [Reason.Volitional]],
+  ['れば', 'る', Type.Initial, Type.IchidanVerb | Type.GodanVerb | Type.KuruVerb | Type.SuruVerb, [Reason.Ba]],
+  ['れる', 'る', Type.IchidanVerb, Type.IchidanVerb | Type.GodanVerb, [Reason.Potential]],
+  ['れる', '', Type.IchidanVerb, Type.IrrealisStem, [Reason.Passive]],
+  ['ろう', 'る', Type.Initial, Type.GodanVerb, [Reason.Volitional]],
+  // Irregular て-form stems
+  ['いっ', 'いく', Type.TaTeStem, Type.GodanVerb, []],
+  ['おう', 'おう', Type.TaTeStem, Type.GodanVerb, []],
+  ['こう', 'こう', Type.TaTeStem, Type.GodanVerb, []],
+  ['そう', 'そう', Type.TaTeStem, Type.GodanVerb, []],
+  ['とう', 'とう', Type.TaTeStem, Type.GodanVerb, []],
+  ['行っ', '行く', Type.TaTeStem, Type.GodanVerb, []],
+  ['逝っ', '逝く', Type.TaTeStem, Type.GodanVerb, []],
+  ['往っ', '往く', Type.TaTeStem, Type.GodanVerb, []],
+  ['請う', '請う', Type.TaTeStem, Type.GodanVerb, []],
+  ['乞う', '乞う', Type.TaTeStem, Type.GodanVerb, []],
+  ['恋う', '恋う', Type.TaTeStem, Type.GodanVerb, []],
+  ['問う', '問う', Type.TaTeStem, Type.GodanVerb, []],
+  ['負う', '負う', Type.TaTeStem, Type.GodanVerb, []],
+  ['沿う', '沿う', Type.TaTeStem, Type.GodanVerb, []],
+  ['添う', '添う', Type.TaTeStem, Type.GodanVerb, []],
+  ['副う', '副う', Type.TaTeStem, Type.GodanVerb, []],
+  ['厭う', '厭う', Type.TaTeStem, Type.GodanVerb, []],
+  ['給う', '給う', Type.TaTeStem, Type.GodanVerb, []],
+  ['賜う', '賜う', Type.TaTeStem, Type.GodanVerb, []],
+  ['宣う', '宣う', Type.TaTeStem, Type.GodanVerb, []],
+  ['曰う', '曰う', Type.TaTeStem, Type.GodanVerb, []],
+  // -------------- 1 --------------
+  ['い', 'う', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['い', 'く', Type.TaTeStem, Type.GodanVerb, []],
+  ['い', 'ぐ', Type.DaDeStem, Type.GodanVerb, []],
+  ['い', 'る', Type.Initial, Type.KuruVerb, [Reason.Imperative]],
+  ['え', 'う', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['か', 'く', Type.IrrealisStem, Type.GodanVerb, []],
+  ['が', 'ぐ', Type.IrrealisStem, Type.GodanVerb, []],
+  ['き', 'い', Type.Initial, Type.IAdj, [Reason.Ki]],
+  ['き', 'く', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['き', 'くる', Type.TaTeStem, Type.KuruVerb, []],
+  ['き', 'くる', Type.MasuStem, Type.KuruVerb, [Reason.MasuStem]],
+  ['ぎ', 'ぐ', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['く', 'い', Type.Initial, Type.IAdj, [Reason.Adv]],
+  ['け', 'く', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['げ', 'ぐ', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['こ', 'くる', Type.IrrealisStem, Type.KuruVerb, []],
+  ['さ', 'い', Type.Initial, Type.IAdj, [Reason.Noun]],
+  ['さ', 'す', Type.IrrealisStem, Type.GodanVerb, []],
+  ['し', 'す', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['し', 'する', Type.MasuStem, Type.SuruVerb, [Reason.MasuStem]],
+  ['し', 'す', Type.TaTeStem, Type.GodanVerb, []],
+  ['し', 'する', Type.TaTeStem, Type.SuruVerb, []],
+  ['ず', '', Type.Initial, Type.IrrealisStem, [Reason.Zu]],
+  ['せ', 'す', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['せ', 'する', Type.Initial, Type.SpecialSuruVerb, [Reason.Irregular, Reason.Imperative]],
+  ['た', 'つ', Type.IrrealisStem, Type.GodanVerb, []],
+  ['た', '', Type.Initial, Type.TaTeStem, [Reason.Past]],
+  ['だ', '', Type.Initial, Type.DaDeStem, [Reason.Past]],
+  ['ち', 'つ', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['っ', 'う', Type.TaTeStem, Type.GodanVerb, []],
+  ['っ', 'つ', Type.TaTeStem, Type.GodanVerb, []],
+  ['っ', 'る', Type.TaTeStem, Type.GodanVerb, []],
+  ['て', '', Type.Initial, Type.TaTeStem, [Reason.Te]],
+  ['て', 'つ', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['で', '', Type.Initial, Type.DaDeStem, [Reason.Te]],
+  ['な', 'ぬ', Type.IrrealisStem, Type.GodanVerb, []],
+  ['な', '', Type.Initial, Type.IchidanVerb | Type.GodanVerb | Type.KuruVerb | Type.SuruVerb, [Reason.ImperativeNegative]],
+  ['に', 'ぬ', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['ぬ', '', Type.Initial, Type.IrrealisStem, [Reason.Negative]],
+  ['ね', 'ぬ', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['ば', 'ぶ', Type.IrrealisStem, Type.GodanVerb, []],
+  ['び', 'ぶ', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['べ', 'ぶ', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['ま', 'む', Type.IrrealisStem, Type.GodanVerb, []],
+  ['み', 'む', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['め', 'む', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['よ', 'る', Type.Initial, Type.IchidanVerb, [Reason.Imperative]],
+  ['ら', 'る', Type.IrrealisStem, Type.GodanVerb, []],
+  ['り', 'る', Type.MasuStem, Type.GodanVerb, [Reason.MasuStem]],
+  ['れ', 'る', Type.Initial, Type.GodanVerb, [Reason.Imperative]],
+  ['ろ', 'る', Type.Initial, Type.IchidanVerb, [Reason.Imperative]],
+  ['わ', 'う', Type.IrrealisStem, Type.GodanVerb, []],
+  ['ん', 'ぬ', Type.DaDeStem, Type.GodanVerb, []],
+  ['ん', 'ぶ', Type.DaDeStem, Type.GodanVerb, []],
+  ['ん', 'む', Type.DaDeStem, Type.GodanVerb, []],
+  ['ん', '', Type.Initial, Type.IrrealisStem, [Reason.Negative]],
+];
 
 interface DeinflectRuleGroup {
   rules: Array<DeinflectRule>;
@@ -918,8 +408,8 @@ function getDeinflectRuleGroups() {
     let prevLen = -1;
     let ruleGroup: DeinflectRuleGroup;
 
-    for (const [from, to, fromType, toType, reason] of deinflectRuleData) {
-      const rule: DeinflectRule = { from, to, fromType, toType, reason };
+    for (const [from, to, fromType, toType, reasons] of deinflectRuleData) {
+      const rule: DeinflectRule = { from, to, fromType, toType, reasons };
 
       if (prevLen !== rule.from.length) {
         prevLen = rule.from.length;
@@ -942,7 +432,7 @@ export interface CandidateWord {
   // Each array is a sequence of rules applied in turn.
   // There may be multiple arrays when multiple sequences of rules were applied
   // to produce word.
-  reasons: Array<Array<Reason>>;
+  reasonChains: Array<Array<Reason>>;
   // For a de-inflected word, this is a bitfield comprised of flags from the
   // WordType enum describing the possible types of word this could represent
   // (e.g. godan verb, i-adj). If a word looked up in the dictionary does not
@@ -961,10 +451,10 @@ export function deinflect(word: string): CandidateWord[] {
 
   const original: CandidateWord = {
     word,
-    // Initially we don't know what type of word we have so we set the type
-    // mask to match all rules.
-    type: 0xff,
-    reasons: [],
+    // Initially, the type of word is unknown, so we set the type mask to
+    // match all rules except stems, that don't make sense on their own.
+    type: 0xffff ^ (Type.TaTeStem | Type.DaDeStem | Type.IrrealisStem),
+    reasonChains: [],
   };
   result.push(original);
   resultIndex[word] = 0;
@@ -973,23 +463,58 @@ export function deinflect(word: string): CandidateWord[] {
   do {
     const thisCandidate = result[i];
 
-    // Don't deinflect masu-stem results any further since they should already
-    // be the plain form.
+    // Don't deinflect masu-stem results of Ichidan verbs any further since
+    // they should already be the plain form.
     //
     // Without this we would take something like 食べて, try deinflecting it as
     // a masu stem into 食べてる and then try de-inflecting it as a continuous
     // form. However, we should just stop immediately after de-inflecting to
     // the plain form.
     if (
-      thisCandidate.reasons.length === 1 &&
-      thisCandidate.reasons[0].length === 1 &&
-      thisCandidate.reasons[0][0] === Reason.MasuStem
+      thisCandidate.type & Type.IchidanVerb &&
+      thisCandidate.reasonChains.length === 1 &&
+      thisCandidate.reasonChains[0].length === 1 &&
+      thisCandidate.reasonChains[0][0] === Reason.MasuStem
     ) {
       continue;
     }
 
     const word = thisCandidate.word;
     const type = thisCandidate.type;
+
+    // Ichidan verbs have only one stem, which is the plain form minus the
+    // final る. Since the stem is shorter than the plain form, to avoid
+    // adding multiple entries for all possible stem variations to the rule
+    // data array, we forward the stem to the plain form programmatically.
+    if (type & (Type.MasuStem | Type.TaTeStem | Type.IrrealisStem)) {
+      const reason = [];
+
+      // Add the "masu" reason only if the word is solely the masu stem.
+      if (type & Type.MasuStem && !thisCandidate.reasonChains.length) {
+        reason.push([Reason.MasuStem]);
+      }
+
+      // Ichidan verbs attach the auxiliary verbs られる and させる instead of
+      // れる and せる for the passive and causative forms to their stem. Since
+      // られる and させる exist as separate rules that bypass the irrealis stem
+      // type, we ignore the the rules with a to-type of IrrealisStem for the
+      // passive and causative, i.e. the rules for れる and せる.
+      // Similarly, we need to ignore the rule for the causative passive, as
+      // the contraction of せられる to される is incorrect for Ichidan verbs.
+      const inapplicableForm =
+        type & Type.IrrealisStem &&
+        (thisCandidate.reasonChains[0][0] == Reason.Passive ||
+          thisCandidate.reasonChains[0][0] == Reason.Causative ||
+          thisCandidate.reasonChains[0][0] == Reason.CausativePassive);
+
+      if (!inapplicableForm) {
+        result.push({
+          word: word + 'る',
+          type: Type.IchidanVerb | Type.KuruVerb,
+          reasonChains: [...thisCandidate.reasonChains, ...reason],
+        });
+      }
+    }
 
     for (const ruleGroup of ruleGroups) {
       if (ruleGroup.fromLen > word.length) {
@@ -1010,12 +535,24 @@ export function deinflect(word: string): CandidateWord[] {
 
         const newWord =
           word.substring(0, word.length - rule.from.length) + rule.to;
-        if (newWord.length <= 1) {
+        if (!newWord.length) {
+          continue;
+        }
+
+        // Continue if the rule introduces a duplicate in the reason chain,
+        // as it wouldn't make sense grammatically.
+        const ruleReasons = new Set(rule.reasons);
+        if (thisCandidate.reasonChains.flat().some((r) => ruleReasons.has(r))) {
           continue;
         }
 
         // If we already have a candidate for this word with the same
-        // 'to' type(s), expand the possible reasons.
+        // 'to' type(s), expand the possible reasons by starting a new
+        // reason chain.
+        //
+        // We do not want to start a new reason chain with a pure forwarding
+        // rule, represented by an empty reasons array, as it cannot stand on
+        // its own and needs a preceding rule to make sense.
         //
         // If the 'to' type(s) differ, then we'll add a separate candidate
         // and just hope that when we go to match against dictionary words
@@ -1023,8 +560,10 @@ export function deinflect(word: string): CandidateWord[] {
         if (resultIndex[newWord]) {
           const candidate = result[resultIndex[newWord]];
           if (candidate.type === rule.toType) {
-            // Start a new reason chain
-            candidate.reasons.unshift([rule.reason]);
+            if (rule.reasons.length) {
+              // Start a new reason chain
+              candidate.reasonChains.unshift([...rule.reasons]);
+            }
             continue;
           }
         }
@@ -1035,43 +574,45 @@ export function deinflect(word: string): CandidateWord[] {
         //
 
         // Deep clone multidimensional array
-        const reasons = [];
-        for (const array of thisCandidate.reasons) {
-          reasons.push([...array]);
+        const reasonChains = [];
+        for (const array of thisCandidate.reasonChains) {
+          reasonChains.push([...array]);
         }
 
-        // Add our new reason in
-        //
-        // If we already have reason chains, prepend to the first chain
-        if (reasons.length) {
-          const firstReasonChain = reasons[0];
+        // We only need to add something to the reason chain if the rule is
+        // not a pure forwarding rule, i.e. the reasons array is not empty.
+        if (rule.reasons.length) {
+          // Add our new reason in
+          //
+          // If we already have reason chains, prepend to the first chain
+          if (reasonChains.length) {
+            const firstReasonChain = reasonChains[0];
 
-          // Rather having causative + passive, combine the two rules into
-          // "causative passive":
-          if (
-            rule.reason === Reason.Causative &&
-            firstReasonChain.length &&
-            firstReasonChain[0] === Reason.PotentialOrPassive
-          ) {
-            firstReasonChain.splice(0, 1, Reason.CausativePassive);
-          } else if (
-            // If we're inflecting a Vない type word back to V, then we don't want
-            // to add the "negative" reason since it's already expected to be in
-            // negative form.
-            thisCandidate.type === Type.VNai &&
-            rule.reason === Reason.Negative
-          ) {
-            // Do nothing
+            // Rather having causative + passive, combine the two rules into
+            // "causative passive":
+            if (
+              rule.reasons[0] === Reason.Causative &&
+              firstReasonChain.length &&
+              firstReasonChain[0] === Reason.PotentialOrPassive
+            ) {
+              firstReasonChain.splice(0, 1, Reason.CausativePassive);
+            } else if (
+              // Add the "masu" reason only if the word is solely the masu stem.
+              rule.reasons[0] === Reason.MasuStem &&
+              firstReasonChain.length
+            ) {
+              // Do nothing
+            } else {
+              firstReasonChain.unshift(...rule.reasons);
+            }
           } else {
-            firstReasonChain.unshift(rule.reason);
+            // Add new reason to the start of the chain
+            reasonChains.push([...rule.reasons]);
           }
-        } else {
-          // Add new reason to the start of the chain
-          reasons.push([rule.reason]);
         }
 
         const candidate: CandidateWord = {
-          reasons,
+          reasonChains,
           type: rule.toType,
           word: newWord,
         };

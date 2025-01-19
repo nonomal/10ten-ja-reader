@@ -1,15 +1,15 @@
 import { html } from '../utils/builder';
 import {
+  SVG_NS,
   isElement,
   isTextInputNode,
   isTextNode,
-  SVG_NS,
 } from '../utils/dom-utils';
 import {
-  bboxIncludesPoint,
-  getBboxForNodeList,
   Point,
   Rect,
+  bboxIncludesPoint,
+  getBboxForNodeList,
 } from '../utils/geometry';
 import {
   getBboxForSingleCodepointRange,
@@ -18,21 +18,8 @@ import {
 import { isChromium } from '../utils/ua-utils';
 
 import { isGdocsOverlayElem } from './gdocs-canvas';
+import { isPopupWindowHostElem } from './popup/popup-container';
 import { toPageCoords } from './scroll-offset';
-
-declare global {
-  // The following definitions were dropped from lib.dom.d.ts in TypeScript 4.4
-  // since only Firefox supports them.
-  interface CaretPosition {
-    readonly offsetNode: Node;
-    readonly offset: number;
-    getClientRect(): DOMRect | null;
-  }
-
-  interface Document {
-    caretPositionFromPoint?: (x: number, y: number) => CaretPosition | null;
-  }
-}
 
 export type CursorPosition<T extends Node = Node> = {
   offset: number;
@@ -178,7 +165,21 @@ function getCursorPositionForElement({
 
   // If the position is in a text input element or Google Docs element return it
   // immediately.
-  if (isTextInputPosition(position) || isGdocsOverlayPosition(position)) {
+  if (isTextInputPosition(position)) {
+    // For a textarea we still need to check it overlaps since at least in
+    // Firefox, if it is display: block, caretPositionFromPoint might return it
+    // even when the point is outside the element.
+    //
+    // And although we've never encountered such a case, we should probably
+    // check that the element is visible too.
+    return positionIntersectsPoint(position, point) &&
+      isVisible(position.offsetNode)
+      ? position
+      : null;
+  }
+
+  // For Google Docs, presumably the element is overlapping and visible.
+  if (isGdocsOverlayPosition(position)) {
     return position;
   }
 
@@ -269,8 +270,11 @@ function getCaretPosition({
   point: Point;
   element: Element;
 }): CursorPosition | null {
-  if (document.caretPositionFromPoint) {
-    const position = document.caretPositionFromPoint(point.x, point.y);
+  if (typeof document.caretPositionFromPoint === 'function') {
+    const shadowRoots = getDescendantShadowRoots(element);
+    const position = document.caretPositionFromPoint(point.x, point.y, {
+      shadowRoots,
+    });
     return position?.offsetNode
       ? { offset: position.offset, offsetNode: position.offsetNode }
       : null;
@@ -511,9 +515,11 @@ function getDistanceFromTextNode(
 function caretRangeFromPoint({
   point,
   element,
+  limitToDescendants = false,
 }: {
   point: Point;
   element: Element;
+  limitToDescendants?: boolean;
 }): CursorPosition | null {
   // Special handling for text boxes.
   //
@@ -528,13 +534,24 @@ function caretRangeFromPoint({
 
   let range = document.caretRangeFromPoint(point.x, point.y);
 
+  if (
+    !range ||
+    // Normally we don't perform a lookup if we detect a pointermove event over
+    // the popup window, but when using the puck we allow it as otherwise when
+    // the puck pointer passes over the window, we'll fail to dismiss it.
+    isPopupWindowHostElem(range.startContainer) ||
+    (limitToDescendants && !element.contains(range.startContainer))
+  ) {
+    return null;
+  }
+
   // Unlike `document.caretPositionFromPoint` in Gecko,
   // `document.caretRangeFromPoint` in Blink/WebKit doesn't dig into shadow DOM
   // so we need to do it manually.
-  range = range ? expandShadowDomInRange({ range, point }) : null;
+  range = expandShadowDomInRange({ range, point });
 
   // Check if we are now pointing at an input text node.
-  if (isTextInputNode(range?.startContainer)) {
+  if (isTextInputNode(range.startContainer)) {
     return getCursorPositionFromTextInput({
       input: range!.startContainer,
       point,
@@ -562,6 +579,11 @@ function getCursorPositionFromTextInput({
   input: HTMLInputElement | HTMLTextAreaElement;
   point: Point;
 }): CursorPosition | null {
+  // Empty input elements
+  if (!input.value.trim().length) {
+    return null;
+  }
+
   // This is only called when the platform APIs failed to give us the correct
   // result so we need to synthesize an element with the same layout as the
   // text area, read the text position, then drop it.
@@ -576,7 +598,20 @@ function getCursorPositionFromTextInput({
   const mirrorElement = createMirrorElement(input, input.value);
 
   // Read the offset
-  const result = caretRangeFromPoint({ point, element: mirrorElement });
+  //
+  // We need to be careful not to allow caretRangeFromPoint to visit elements
+  // outside the mirror element or else we can end up in a case of infinite
+  // recursion where we pick up the same input element all over again.
+  //
+  // We _could_ just call `document.caretRangeFromPoint` here which would avoid
+  // recursion but then we'd miss out on the position adjustment we do in
+  // `caretRangeFromPoint` (which maybe would be ok? It's what we do for shadow
+  // DOM after all?).
+  const result = caretRangeFromPoint({
+    point,
+    element: mirrorElement,
+    limitToDescendants: true,
+  });
   if (result) {
     // Adjust the offset before we drop the mirror element
     if (isTextNodePosition(result)) {
@@ -637,9 +672,14 @@ function createMirrorElement(source: HTMLElement, text?: string): HTMLElement {
 
   // Set its styles to be the same
   const cs = document.defaultView!.getComputedStyle(source);
+  const stylesToSet: Record<string, string> = {};
   for (let i = 0; i < cs.length; i++) {
     const prop = cs.item(i);
-    mirrorElement.style.setProperty(prop, cs.getPropertyValue(prop));
+    stylesToSet[prop] = cs.getPropertyValue(prop);
+  }
+
+  for (const [name, value] of Object.entries(stylesToSet)) {
+    mirrorElement.style.setProperty(name, value);
   }
 
   // Special handling for Chromium which does _not_ include the scrollbars in
@@ -713,9 +753,14 @@ function cloneNodeWithStyles(node: Node): Node {
 
   const clone = node.cloneNode(false) as HTMLElement | SVGElement;
   const cs = document.defaultView!.getComputedStyle(node);
+  const stylesToSet: Record<string, string> = {};
   for (let i = 0; i < cs.length; i++) {
     const prop = cs.item(i);
-    clone.style.setProperty(prop, cs.getPropertyValue(prop));
+    stylesToSet[prop] = cs.getPropertyValue(prop);
+  }
+
+  for (const [name, value] of Object.entries(stylesToSet)) {
+    clone.style.setProperty(name, value);
   }
 
   for (const child of node.childNodes) {
@@ -724,6 +769,12 @@ function cloneNodeWithStyles(node: Node): Node {
 
   return clone;
 }
+
+// --------------------------------------------------------------------------
+//
+// Shadow DOM helpers
+//
+// --------------------------------------------------------------------------
 
 function expandShadowDomInRange({
   range,
@@ -820,6 +871,28 @@ function getShadowRoot({
   }
 
   return null;
+}
+
+function getDescendantShadowRoots(root: Element): Array<ShadowRoot> {
+  const shadowRoots: Array<ShadowRoot> = [];
+
+  function traverse(element: Element) {
+    if (element.shadowRoot) {
+      shadowRoots.push(element.shadowRoot);
+
+      for (const child of element.shadowRoot.children) {
+        traverse(child);
+      }
+    }
+
+    for (const child of element.children) {
+      traverse(child);
+    }
+  }
+
+  traverse(root);
+
+  return shadowRoots;
 }
 
 function getBboxForShadowHost(element: Element): Rect | null {
@@ -971,6 +1044,12 @@ function getRangeForShadowElement({
   shadowRange.setEnd(shadowTarget, offset);
   return shadowRange;
 }
+
+// --------------------------------------------------------------------------
+//
+// More caretRangeFromPoint helpers
+//
+// --------------------------------------------------------------------------
 
 // On Safari, if you pass a point into caretRangeFromPoint that is less than
 // about 60~70% of the way across the first character in a text node it will

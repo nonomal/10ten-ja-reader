@@ -1,5 +1,6 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
+import * as core from '@actions/core';
+import * as github from '@actions/github';
+import * as process from 'node:process';
 
 async function main() {
   const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
@@ -9,13 +10,17 @@ async function main() {
 
   const rawTarget = core.getInput('target');
   const normalizedTarget = normalizeTarget(rawTarget);
-  if (normalizedTarget !== 'Firefox') {
+  if (
+    normalizedTarget !== 'Firefox' &&
+    normalizedTarget !== 'Edge' &&
+    normalizedTarget !== 'Chrome'
+  ) {
     throw new Error(`Unsupported target: ${rawTarget}`);
   }
-  console.log(`Target: ${normalizedTarget}`);
+  core.info(`Target: ${normalizedTarget}`);
 
   const releaseId = core.getInput('release_id');
-  console.log(`Fetching metadata for release ${releaseId}...`);
+  core.info(`Fetching metadata for release ${releaseId}...`);
   const release = await octokit.rest.repos.getRelease({
     owner,
     repo,
@@ -26,7 +31,7 @@ async function main() {
   let addonAsset;
   const { assets } = release.data;
   for (const asset of assets) {
-    if (asset.name.endsWith('-firefox.zip')) {
+    if (asset.name.endsWith(`-${normalizedTarget.toLowerCase()}.zip`)) {
       addonAsset = asset;
       break;
     }
@@ -36,7 +41,7 @@ async function main() {
       `No add-on asset found in ${assets.map((a) => a.name).join(', ')}`
     );
   }
-  console.log(`Found add-on asset: ${addonAsset.name}`);
+  core.info(`Found add-on asset: ${addonAsset.name}`);
   core.setOutput('addon_asset_name', addonAsset.name);
 
   // Find the src asset
@@ -53,7 +58,7 @@ async function main() {
         `No source asset found in ${assets.map((a) => a.name).join(', ')}`
       );
     }
-    console.log(`Found source asset: ${srcAsset.name}`);
+    core.info(`Found source asset: ${srcAsset.name}`);
     core.setOutput('src_asset_name', srcAsset.name);
   }
 
@@ -64,10 +69,10 @@ async function main() {
   body = body.replace(/\r?\n/g, '\n');
 
   const matches = body.match(
-    new RegExp(`${normalizedTarget}:\\s*\n([\\s\\S]*?)(\n\n|\n-->)`)
+    new RegExp(`${normalizedTarget}:\\s*\\n([\\s\\S]*?)(\\n\\n|\\n-->)`)
   );
   if (!matches || matches.length < 2 || !matches[1].length) {
-    console.log(
+    core.warning(
       'No target section found in release notes. Setting skip = true.'
     );
     core.setOutput('skip', true);
@@ -78,14 +83,14 @@ async function main() {
     // when running in CI. Is CI doing something to the line-breaks, for
     // example?
     if (releaseNotes.indexOf('Chrome:') !== -1) {
-      console.error('Regex failed');
-      console.log('body: ' + JSON.stringify(body));
-      console.log('matches: ' + JSON.stringify(matches));
-      console.log('releaseNotes: ' + JSON.stringify(releaseNotes));
+      core.debug('Regex failed');
+      core.debug('body: ' + JSON.stringify(body));
+      core.debug('matches: ' + JSON.stringify(matches));
+      core.debug('releaseNotes: ' + JSON.stringify(releaseNotes));
       core.setFailed('Regex failure');
     } else {
-      console.log(`Found release notes for ${rawTarget}`);
-      console.log(releaseNotes);
+      core.info(`Found release notes for ${rawTarget}`);
+      core.info(releaseNotes);
       core.setOutput('release_notes', releaseNotes);
     }
   }

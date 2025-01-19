@@ -3,18 +3,21 @@ import {
   DataSeries,
   DataSeriesState,
   DataVersion,
-  getKanji,
-  getWords as idbGetWords,
   UpdateErrorState,
   UpdateState,
+  getKanji,
+  getWords as idbGetWords,
 } from '@birchill/jpdict-idb';
 import { kanaToHiragana } from '@birchill/normal-jp';
 import browser from 'webextension-polyfill';
 
-import { ExtensionStorageError } from '../common/extension-storage-error';
 import { normalizeInput } from '../utils/normalize-input';
+import { JpdictWorkerBackend } from '../worker/jpdict-worker-backend';
 
-import { FlatFileDatabaseLoader, FlatFileDatabaseLoadState } from './flat-file';
+import { FlatFileDatabaseLoadState, FlatFileDatabaseLoader } from './flat-file';
+import { JpdictBackend, JpdictLocalBackend } from './jpdict-backend';
+import { JpdictEvent } from './jpdict-events';
+import { nameSearch } from './name-search';
 import {
   KanjiSearchResult,
   NameSearchResult,
@@ -22,10 +25,6 @@ import {
   WordSearchResult,
 } from './search-result';
 import { GetWordsFunction, wordSearch } from './word-search';
-import { nameSearch } from './name-search';
-import { JpdictWorkerBackend } from '../worker/jpdict-worker-backend';
-import { JpdictBackend, JpdictLocalBackend } from './jpdict-backend';
-import { JpdictEvent } from './jpdict-events';
 
 //
 // Exported types
@@ -147,6 +146,9 @@ let lastUpdateTime: number | null = null;
 // Public API
 //
 
+let initPromise: Promise<void> | undefined;
+let initComplete = false;
+
 export async function initDb({
   lang,
   onUpdate,
@@ -154,6 +156,16 @@ export async function initDb({
   lang: string;
   onUpdate: (status: JpdictStateWithFallback) => void;
 }) {
+  if (initPromise) {
+    await initPromise;
+    return;
+  }
+
+  let resolveInitPromise: () => void;
+  initPromise = new Promise((resolve) => {
+    resolveInitPromise = resolve;
+  });
+
   lastUpdateTime = await getLastUpdateTime();
   Bugsnag.leaveBreadcrumb(`Got last update time of ${lastUpdateTime}`);
 
@@ -182,7 +194,16 @@ export async function initDb({
 
           dbState = state;
 
-          onUpdate(state);
+          try {
+            onUpdate(state);
+          } catch (e) {
+            void Bugsnag.notify(e);
+          }
+
+          if (!initComplete) {
+            initComplete = true;
+            resolveInitPromise();
+          }
         }
         break;
 
@@ -222,13 +243,14 @@ export async function initDb({
   // Fetch the initial state
   backend.queryState();
 
-  // If we updated within the minimum window then we're done.
+  // If we updated within the minimum window then we don't need to update
   if (lastUpdateTime && Date.now() - lastUpdateTime < UPDATE_THRESHOLD_MS) {
     Bugsnag.leaveBreadcrumb('Downloaded data is up-to-date');
-    return;
+  } else {
+    updateDb({ lang, force: false });
   }
 
-  updateDb({ lang, force: false });
+  await initPromise;
 }
 
 async function getLastUpdateTime(): Promise<number | null> {
@@ -240,10 +262,7 @@ async function getLastUpdateTime(): Promise<number | null> {
   } catch {
     // Extension storage can sometimes randomly fail with 'An unexpected error
     // occurred'. Ignore, but log it.
-    void Bugsnag.notify(
-      new ExtensionStorageError({ key: 'lastDbUpdateTime', action: 'get' }),
-      { severity: 'warning' }
-    );
+    console.warn('Failed to get last update time from storage');
   }
 
   return null;
@@ -269,10 +288,7 @@ async function setLastUpdateTime(time: number | null) {
       /* Ignore */
     });
   } catch {
-    void Bugsnag.notify(
-      new ExtensionStorageError({ key: 'lastDbUpdateTime', action: 'set' }),
-      { severity: 'warning' }
-    );
+    // Don't notify Bugsnag because this is a common error in Firefox.
   }
 }
 
@@ -310,7 +326,7 @@ export async function searchWords({
 }): Promise<
   [
     result: WordSearchResult | null,
-    dbStatus: 'updating' | 'unavailable' | undefined
+    dbStatus: 'updating' | 'unavailable' | undefined,
   ]
 > {
   let [word, inputLengths] = normalizeInput(input);
@@ -413,14 +429,8 @@ export async function translate({
 // ---------------------------------------------------------------------------
 
 export async function searchKanji(
-  kanji: string
+  input: string
 ): Promise<KanjiSearchResult | null | 'unavailable' | 'updating'> {
-  // Pre-check (might not be needed anymore)
-  const codepoint = kanji.codePointAt(0);
-  if (!codepoint || codepoint < 0x3000) {
-    return null;
-  }
-
   const kanjiStatus = getDataSeriesStatus('kanji');
   const radicalStatus = getDataSeriesStatus('radicals');
   if (kanjiStatus === 'unavailable' || radicalStatus === 'unavailable') {
@@ -430,6 +440,42 @@ export async function searchKanji(
   if (kanjiStatus === 'updating' || radicalStatus === 'updating') {
     return 'updating';
   }
+
+  // Normalize the input in order to be able to parse radicals as kanji.
+  const [normalized] = normalizeInput(input);
+
+  // Do some very elementary filtering on kanji
+  //
+  // We know that the input should be mostly Japanese so we just do some very
+  // basic filtering to drop any hiragana / katakana.
+  //
+  // We _could_ do a more thoroughgoing check based on all the different Unicode
+  // ranges but they're constantly being expanded and if some obscure character
+  // ends up in the kanji database we want to show it even if it doesn't match
+  // our expectations of what characters are kanji.
+  const kanjiLastIndex = new Map<string, number>();
+  const kanji = [
+    ...new Set(
+      [...normalized].filter((c, i) => {
+        const cp = c.codePointAt(0)!;
+        const isKanji =
+          // Don't bother looking up Latin text
+          cp >= 0x3000 &&
+          // Or hiragana (yeah, 0x1b0001 is also hiragana but this is good enough)
+          !(cp >= 0x3040 && cp <= 0x309f) &&
+          // Or katakana
+          !(cp >= 0x30a0 && cp <= 0x30ff) &&
+          !(cp >= 0x31f0 && cp <= 0x31ff) &&
+          // Or half-width katakana
+          !(cp >= 0xff65 && cp <= 0xff9f);
+        if (isKanji) {
+          kanjiLastIndex.set(c, i);
+        }
+
+        return isKanji;
+      })
+    ),
+  ];
 
   const logWarningMessage = (message: string) => {
     // Ignore certain warnings that are not currently meaningful
@@ -443,12 +489,12 @@ export async function searchKanji(
   let result;
   try {
     result = await getKanji({
-      kanji: [kanji],
+      kanji,
       lang: dbState.kanji.version?.lang ?? 'en',
       logWarningMessage,
     });
   } catch (e) {
-    console.error(e);
+    console.error('Error looking up kanji', e);
     void Bugsnag.notify(e || '(Error looking up kanji)');
     return null;
   }
@@ -457,15 +503,11 @@ export async function searchKanji(
     return null;
   }
 
-  if (result.length > 1) {
-    logWarningMessage(`Got more than one result for ${kanji}`);
-  }
+  // Work out what the last matched character was
+  const matchLen =
+    Math.max(...result.map((r) => kanjiLastIndex.get(r.c) || 0)) + 1;
 
-  return {
-    type: 'kanji',
-    data: result[0],
-    matchLen: 1,
-  };
+  return { type: 'kanji', data: result, matchLen };
 }
 
 // ---------------------------------------------------------------------------

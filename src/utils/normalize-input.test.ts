@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { normalizeInput } from './normalize-input';
 
 describe('normalizeInput', () => {
@@ -30,6 +32,6 @@ describe('normalizeInput', () => {
   it('preserves non-BMP characters', () => {
     // Because inputLengths deals with 16-bit code points we _should_ return a
     // value for each part of the initial surrogate pair.
-    expect(normalizeInput('𠏹沢')).toEqual(['𠏹沢', [0, 1, 2, 3]]);
+    expect(normalizeInput('𠏹沢')).toEqual(['𠏹沢', [0, 0, 2, 3]]);
   });
 });

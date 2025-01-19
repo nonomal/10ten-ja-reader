@@ -1,3 +1,5 @@
+import browser from 'webextension-polyfill';
+
 import { HighlightStyle } from '../common/content-config-params';
 import { html } from '../utils/builder';
 import {
@@ -15,28 +17,6 @@ import {
   isGdocsSpan,
 } from './gdocs-canvas';
 import { NodeRange, TextRange } from './text-range';
-
-declare global {
-  interface Highlight extends Set<StaticRange> {
-    readonly priority: number;
-  }
-
-  // eslint-disable-next-line no-var
-  var Highlight: {
-    prototype: Highlight;
-    // Require StaticRange because that's currently all Safari TP allows
-    new (...initialRanges: Array<StaticRange>): Highlight;
-  };
-
-  type HighlightRegistry = Map<string, Highlight>;
-
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace CSS {
-    // Mark as possibly undefined since it's not widely implemented yet and we
-    // want to feature detect this.
-    const highlights: HighlightRegistry | undefined;
-  }
-}
 
 export class TextHighlighter {
   private selectedWindow: Window | null = null;
@@ -478,26 +458,12 @@ export class TextHighlighter {
       return;
     }
 
-    //
-    // These styles need to be synchronized with the preview styles in
-    // options.css
-    //
-    // Don't forget the Google Docs styles in gdocs-canvas.ts too!
-    //
-    document.head.append(
-      html(
-        'style',
-        { id: 'tenten-selection-styles' },
-        `
-::highlight(tenten-selection) {
-  background: #fff394;
-  color: #1d1a19;
-}
-::highlight(tenten-selection-blue) {
-  background: #2589ed;
-  color: white;
-}`
-      )
+    (document.head || document.documentElement).append(
+      html('link', {
+        id: 'tenten-selection-styles',
+        rel: 'stylesheet',
+        href: browser.runtime.getURL('css/selection.css'),
+      })
     );
   }
 
@@ -508,7 +474,10 @@ export class TextHighlighter {
 
 // Iterator for a TextRange that enforces the supplied length
 class TextRangeWithLength implements Iterable<NodeRange> {
-  constructor(public textRange: TextRange, public length: number) {}
+  constructor(
+    public textRange: TextRange,
+    public length: number
+  ) {}
 
   [Symbol.iterator](): Iterator<NodeRange> {
     let i = 0;

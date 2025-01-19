@@ -1,8 +1,5 @@
-import {
-  nonJapaneseChar,
-  nonJapaneseCharOrNumber,
-  startsWithNumber,
-} from '../utils/char-range';
+import { nonJapaneseChar } from '../utils/char-range';
+
 import { CursorPosition } from './get-cursor-position';
 import { GetTextAtPointResult } from './get-text';
 import { extractGetTextMetadata, lookForMetadata } from './meta';
@@ -31,7 +28,7 @@ export function scanText({
   if (!isRubyAnnotationElement(inlineAncestor)) {
     filter = {
       acceptNode: (node) =>
-        isRubyAnnotationElement(node.parentElement)
+        node.parentElement?.closest('rp, rt')
           ? NodeFilter.FILTER_REJECT
           : NodeFilter.FILTER_ACCEPT,
     };
@@ -43,6 +40,8 @@ export function scanText({
     NodeFilter.SHOW_TEXT,
     filter
   );
+
+  /* eslint-disable curly */
   while (treeWalker.referenceNode !== startNode && treeWalker.nextNode());
 
   if (treeWalker.referenceNode !== startNode) {
@@ -64,7 +63,7 @@ export function scanText({
     // be the same node. We only tend to reach that case, however, when our
     // offset corresponds to the end of the text so we just detect that case
     // earlier on and don't bother checking it here.
-    node = <Text>treeWalker.nextNode();
+    node = treeWalker.nextNode() as Text;
     offset = 0;
   } while (node);
   // (This should probably not traverse block siblings but oh well)
@@ -92,14 +91,8 @@ export function scanText({
         result.text +
         nodeText.substring(0, textEnd === -1 ? undefined : textEnd);
 
-      // If the source starts with a number, expand our text delimeter to allow
-      // reading the rest of the number since it might be something like 5つ.
-      if (!currentText.length && startsWithNumber(nodeText)) {
-        textDelimiter = nonJapaneseCharOrNumber;
-      }
-
       // Check if we should further expand the set of allowed characters in
-      // order to recognize certains types of metadata-type strings (e.g. years
+      // order to recognize certain types of metadata-type strings (e.g. years
       // or floor space measurements).
       ({ textDelimiter, textEnd } = lookForMetadata({
         currentText,
@@ -144,7 +137,7 @@ export function scanText({
       start: offset,
       end: node.data.length,
     });
-    node = <Text>treeWalker.nextNode();
+    node = treeWalker.nextNode() as Text;
     offset = 0;
   } while (
     node &&
@@ -163,7 +156,7 @@ export function scanText({
 }
 
 function isRubyAnnotationElement(element: Element | null) {
-  return element && ['RP', 'RT'].includes(element.tagName);
+  return element?.matches('rp, rt');
 }
 
 function isInline(element: Element | null) {

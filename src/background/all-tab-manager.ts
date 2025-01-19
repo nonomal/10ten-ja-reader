@@ -1,9 +1,9 @@
+/// <reference path="./mail-extensions.d.ts" />
 import Bugsnag from '@birchill/bugsnag-zero';
 import * as s from 'superstruct';
 import browser, { Runtime, Tabs, Windows } from 'webextension-polyfill';
 
 import { ContentConfigParams } from '../common/content-config-params';
-import { ExtensionStorageError } from '../common/extension-storage-error';
 import { requestIdleCallback } from '../utils/request-idle-callback';
 
 import {
@@ -26,12 +26,31 @@ type Tab = {
 
 export default class AllTabManager implements TabManager {
   private config: ContentConfigParams | undefined;
+  private initPromise: Promise<void> | undefined;
+  private initComplete = false;
   private enabled = false;
   private listeners: Array<EnabledChangedCallback> = [];
   private tabs: Array<Tab> = [];
   private tabsCleanupTask: number | undefined;
 
   async init(config: ContentConfigParams): Promise<void> {
+    if (this.initPromise) {
+      if (JSON.stringify(this.config) !== JSON.stringify(config)) {
+        const error = new Error(
+          'AllTabManager::init called multiple times with different configurations'
+        );
+        console.error(error);
+        void Bugsnag.notify(error);
+      }
+      return this.initPromise;
+    }
+
+    this.initPromise = this.doInit(config);
+
+    return this.initPromise;
+  }
+
+  private async doInit(config: ContentConfigParams): Promise<void> {
     this.config = config;
 
     // Try to fetch our previous enabled state from local storage
@@ -58,15 +77,15 @@ export default class AllTabManager implements TabManager {
       (
         request: unknown,
         sender: Runtime.MessageSender
-      ): void | Promise<any> => {
+      ): undefined | Promise<any> => {
         if (!s.is(request, BackgroundRequestSchema)) {
-          return;
+          return undefined;
         }
 
         switch (request.type) {
           case 'enable?':
             if (!sender.tab || typeof sender.tab.id !== 'number') {
-              return;
+              return undefined;
             }
 
             void this.enableTab(sender.tab.id, sender.frameId);
@@ -78,7 +97,7 @@ export default class AllTabManager implements TabManager {
               typeof sender.tab.id !== 'number' ||
               typeof sender.frameId !== 'number'
             ) {
-              return;
+              return undefined;
             }
 
             this.updateFrames({
@@ -100,8 +119,12 @@ export default class AllTabManager implements TabManager {
             });
             break;
         }
+
+        return undefined;
       }
     );
+
+    this.initComplete = true;
   }
 
   private async getStoredEnabledState(): Promise<boolean> {
@@ -109,10 +132,7 @@ export default class AllTabManager implements TabManager {
     try {
       getEnabledResult = await browser.storage.local.get('enabled');
     } catch {
-      void Bugsnag.notify(
-        new ExtensionStorageError({ key: 'enabled', action: 'get' }),
-        { severity: 'warning' }
-      );
+      // This error occurs too frequently to be useful to report to Bugsnag.
       return false;
     }
 
@@ -166,7 +186,13 @@ export default class AllTabManager implements TabManager {
   // Toggling related interface
   //
 
-  async toggleTab(_tab: Tabs.Tab, config: ContentConfigParams) {
+  async toggleTab(_tab: Tabs.Tab | undefined, config: ContentConfigParams) {
+    if (!this.initPromise) {
+      throw new Error('Should have called init before toggleTab');
+    }
+
+    await this.initPromise;
+
     // Update our local copy of the config
     this.config = config;
 
@@ -246,6 +272,10 @@ export default class AllTabManager implements TabManager {
     await sendMessageToAllTabs({ type: 'enable', config, frame: '*' });
   }
 
+  async notifyDbUpdated() {
+    await sendMessageToAllTabs({ type: 'dbUpdated', frame: '*' });
+  }
+
   //
   // Frame management
   //
@@ -300,11 +330,7 @@ export default class AllTabManager implements TabManager {
     tabId: number;
     frameId: number;
   }): string | undefined {
-    if (!(frameId in this.tabs[tabId].frames)) {
-      return undefined;
-    }
-
-    return this.tabs[tabId].frames[frameId].initialSrc;
+    return this.tabs[tabId]?.frames[frameId]?.initialSrc;
   }
 
   private updateFrames({
@@ -410,11 +436,12 @@ export default class AllTabManager implements TabManager {
       this.listeners.push(listener);
     }
 
-    // Call with initial state, after spinning the event loop to give the client
-    // a chance to initialize.
-    setTimeout(() => {
+    if (this.initComplete) {
       listener({ enabled: this.enabled, anyEnabled: this.enabled });
-    }, 0);
+    }
+
+    // If we are still initializing, all the listeners will get notified at the
+    // end of initialization if we are enabled.
   }
 
   removeListener(listener: EnabledChangedCallback) {

@@ -15,6 +15,9 @@ import { getLangTag } from './lang-tag';
 
 export function renderCopyOverlay({
   copyState,
+  includeAllSenses,
+  includeLessCommonHeadwords,
+  includePartOfSpeech,
   kanjiReferences,
   onCancelCopy,
   onCopy,
@@ -23,6 +26,9 @@ export function renderCopyOverlay({
   showKanjiComponents,
 }: {
   copyState: CopyState;
+  includeAllSenses: boolean;
+  includeLessCommonHeadwords: boolean;
+  includePartOfSpeech: boolean;
   kanjiReferences: Array<ReferenceAbbreviation>;
   onCancelCopy?: () => void;
   onCopy?: (copyType: CopyType) => void;
@@ -43,7 +49,11 @@ export function renderCopyOverlay({
 
   // Heading
   const wordToCopy = entryToCopy
-    ? getTextToCopy({ entry: entryToCopy, copyType: 'word' })
+    ? getTextToCopy({
+        entry: entryToCopy,
+        copyType: 'word',
+        getMessage: browser.i18n.getMessage.bind(browser.i18n),
+      })
     : null;
   const heading = wordToCopy
     ? browser.i18n.getMessage(
@@ -72,6 +82,10 @@ export function renderCopyOverlay({
       ? getTextToCopy({
           entry: entryToCopy,
           copyType: 'entry',
+          getMessage: browser.i18n.getMessage.bind(browser.i18n),
+          includeAllSenses,
+          includeLessCommonHeadwords,
+          includePartOfSpeech,
           kanjiReferences,
           showKanjiComponents,
         })
@@ -90,6 +104,10 @@ export function renderCopyOverlay({
       ? getTextToCopy({
           entry: entryToCopy,
           copyType: 'tab',
+          getMessage: browser.i18n.getMessage.bind(browser.i18n),
+          includeAllSenses,
+          includeLessCommonHeadwords,
+          includePartOfSpeech,
           kanjiReferences,
           showKanjiComponents,
         }).replace(/\t/g, ' → ')

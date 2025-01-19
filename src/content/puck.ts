@@ -1,3 +1,7 @@
+/// <reference path="../common/css.d.ts" />
+import puckStyles from '../../css/puck.css?inline';
+
+import { PuckState } from '../common/puck-state';
 import { SVG_NS } from '../utils/dom-utils';
 import { MarginBox } from '../utils/geometry';
 import { getThemeClass } from '../utils/themes';
@@ -8,9 +12,8 @@ import {
   removeContentContainer,
 } from './content-container';
 import { getIframeOrigin } from './iframes';
+import { isPopupWindowHostElem } from './popup/popup-container';
 import type { SafeAreaProvider } from './safe-area-provider';
-
-import puckStyles from '../../css/puck.css';
 
 interface ViewportDimensions {
   viewportWidth: number;
@@ -22,13 +25,13 @@ export interface PuckRenderOptions {
   theme: string;
 }
 
-export function isPuckMouseEvent(
-  mouseEvent: MouseEvent
-): mouseEvent is PuckMouseEvent {
-  return !!(mouseEvent as PuckMouseEvent).fromPuck;
+export function isPuckPointerEvent(
+  pointerEvent: PointerEvent
+): pointerEvent is PuckPointerEvent {
+  return !!(pointerEvent as PuckPointerEvent).fromPuck;
 }
 
-export interface PuckMouseEvent extends MouseEvent {
+export interface PuckPointerEvent extends PointerEvent {
   fromPuck: true;
 }
 
@@ -82,15 +85,19 @@ function clearClickTimeout(clickState: ClickState) {
 //   furthermore looks up words.
 export type PuckEnabledState = 'disabled' | 'inactive' | 'active';
 
+export type InitialPuckPosition = Omit<PuckState, 'active'>;
+
 type RestoreContentParams = { root: Element; restore: () => void };
 
+export const LookupPuckId = 'tenten-ja-puck';
+
+const clickHysteresis = 300;
+
 export class LookupPuck {
-  public static id = 'tenten-ja-puck';
   private puck: HTMLDivElement | undefined;
   private enabledState: PuckEnabledState = 'disabled';
 
   private clickState: ClickState = { kind: 'idle' };
-  private static readonly clickHysteresis = 300;
 
   private puckX: number;
   private puckY: number;
@@ -129,10 +136,36 @@ export class LookupPuck {
   // to its original state when we have finished with it.
   private contentToRestore: RestoreContentParams | undefined;
 
-  constructor(
-    private safeAreaProvider: SafeAreaProvider,
-    private onLookupDisabled: () => void
-  ) {}
+  private safeAreaProvider: SafeAreaProvider;
+
+  // Callbacks
+  private onLookupDisabled: () => void;
+  private onPuckStateChanged: (puckState: PuckState) => void;
+
+  constructor({
+    initialPosition,
+    safeAreaProvider,
+    onLookupDisabled,
+    onPuckStateChanged,
+  }: {
+    initialPosition?: InitialPuckPosition;
+    safeAreaProvider: SafeAreaProvider;
+    onLookupDisabled: () => void;
+    onPuckStateChanged: (puckState: PuckState) => void;
+  }) {
+    if (initialPosition) {
+      this.puckX = initialPosition.x;
+      this.puckY = initialPosition.y;
+      this.targetOrientation = initialPosition.orientation;
+    } else {
+      // Initially position the puck in the bottom-right corner of the screen
+      this.puckX = Number.MAX_SAFE_INTEGER;
+      this.puckY = Number.MAX_SAFE_INTEGER;
+    }
+    this.safeAreaProvider = safeAreaProvider;
+    this.onLookupDisabled = onLookupDisabled;
+    this.onPuckStateChanged = onPuckStateChanged;
+  }
 
   private readonly onSafeAreaUpdated = () => {
     this.cachedViewportDimensions = null;
@@ -343,6 +376,10 @@ export class LookupPuck {
   }
 
   readonly onWindowPointerMove = (event: PointerEvent) => {
+    if (isPuckPointerEvent(event)) {
+      return;
+    }
+
     if (
       !this.puck ||
       !this.earthWidth ||
@@ -404,7 +441,12 @@ export class LookupPuck {
       viewportOffsetTop;
 
     // See what we are pointing at
-    let target = document.elementFromPoint(targetX, targetY);
+    let target =
+      document
+        .elementsFromPoint(targetX, targetY)
+        // Ignore any element in the 10ten popup itself; we don't want
+        // the puck moon to hold the popup open like a mouse event does.
+        .find((target) => !isPopupWindowHostElem(target)) || null;
 
     // Check if we need to adjust the content to look it up.
     //
@@ -475,15 +517,16 @@ export class LookupPuck {
       return;
     }
 
-    const mouseEvent = new MouseEvent('mousemove', {
+    const pointerEvent = new PointerEvent('pointermove', {
       // Make sure the event bubbles up to the listener on the window
       bubbles: true,
       clientX: targetX,
       clientY: targetY,
+      pointerType: 'mouse',
     });
-    (mouseEvent as PuckMouseEvent).fromPuck = true;
+    (pointerEvent as PuckPointerEvent).fromPuck = true;
 
-    target.dispatchEvent(mouseEvent);
+    target.dispatchEvent(pointerEvent);
   };
 
   private restoreContent() {
@@ -643,16 +686,13 @@ export class LookupPuck {
           if (this.clickState.kind === 'firstpointerdown') {
             this.clickState = { kind: 'dragging' };
           }
-        }, LookupPuck.clickHysteresis),
+        }, clickHysteresis),
       };
     } else if (this.clickState.kind === 'firstclick') {
       // Carry across the timeout from 'firstclick', as we still want to
       // transition back to 'idle' if no 'pointerdown' event came within
       // the hysteresis period of the preceding 'firstclick' state.
-      this.clickState = {
-        ...this.clickState,
-        kind: 'secondpointerdown',
-      };
+      this.clickState = { ...this.clickState, kind: 'secondpointerdown' };
     }
 
     event.preventDefault();
@@ -681,10 +721,19 @@ export class LookupPuck {
   // detecting the second tap of a double-tap gesture.
   //
   // When the pointer events are _not_ swallowed, because we call preventDefault
-  // on the pointerdown / pointerup events, we these functions should never be
+  // on the pointerdown / pointerup events, these functions should never be
   // called.
 
   private readonly onPuckMouseDown = (event: MouseEvent) => {
+    // This is only needed for iOS Safari and on Firefox for Android, calling
+    // preventDefault on a pointerdown event will _not_ prevent it from
+    // triggering subsequent mousedown/mouseup events (see
+    // https://codepen.io/birtles/pen/rNPKNQJ) so we should _not_ run this code
+    // on platforms other than iOS.
+    if (!isIOS()) {
+      return;
+    }
+
     if (this.enabledState === 'disabled' || !this.puck) {
       return;
     }
@@ -720,6 +769,15 @@ export class LookupPuck {
   };
 
   private readonly onPuckMouseUp = (event: MouseEvent) => {
+    // This is only needed for iOS Safari and on Firefox for Android, calling
+    // preventDefault on a pointerdown event will _not_ prevent it from
+    // triggering subsequent mousedown/mouseup events (see
+    // https://codepen.io/birtles/pen/rNPKNQJ) so we should _not_ run this code
+    // on platforms other than iOS.
+    if (!isIOS()) {
+      return;
+    }
+
     if (this.enabledState === 'disabled' || !this.puck) {
       return;
     }
@@ -746,12 +804,14 @@ export class LookupPuck {
     this.setEnabledState(
       this.enabledState === 'active' ? 'inactive' : 'active'
     );
+    this.notifyPuckStateChanged();
   };
 
   private readonly onPuckDoubleClick = () => {
     this.targetOrientation =
       this.targetOrientation === 'above' ? 'below' : 'above';
     this.setPositionWithinSafeArea(this.puckX, this.puckY);
+    this.notifyPuckStateChanged();
   };
 
   // May be called manually (without an event), or upon 'pointerup' or
@@ -765,6 +825,7 @@ export class LookupPuck {
     if (this.puck) {
       this.puck.classList.remove('dragging');
       this.setPositionWithinSafeArea(this.puckX, this.puckY);
+      this.notifyPuckStateChanged();
     }
 
     window.removeEventListener('pointermove', this.onWindowPointerMove, {
@@ -798,7 +859,7 @@ export class LookupPuck {
           } else if (this.clickState.kind === 'secondpointerdown') {
             this.clickState = { kind: 'dragging' };
           }
-        }, LookupPuck.clickHysteresis),
+        }, clickHysteresis),
       };
     } else if (this.clickState.kind === 'secondpointerdown') {
       clearClickTimeout(this.clickState);
@@ -814,7 +875,7 @@ export class LookupPuck {
   render({ icon, theme }: PuckRenderOptions): void {
     // Set up shadow tree
     const container = getOrCreateEmptyContainer({
-      id: LookupPuck.id,
+      id: LookupPuckId,
       styles: puckStyles.toString(),
     });
 
@@ -908,11 +969,7 @@ export class LookupPuck {
         extraAltitudeToClearIos15SafariSafeAreaActivationZone;
     }
 
-    // Place in the bottom-right of the safe area
-    this.setPositionWithinSafeArea(
-      Number.MAX_SAFE_INTEGER,
-      Number.MAX_SAFE_INTEGER
-    );
+    this.setPositionWithinSafeArea(this.puckX, this.puckY);
 
     // Add event listeners
     //
@@ -1053,6 +1110,12 @@ export class LookupPuck {
       window.removeEventListener('pointerup', this.noOpEventHandler);
       clearClickTimeout(this.clickState);
       this.clickState = { kind: 'idle' };
+
+      // Reset puck position
+      this.puckX = Number.MAX_SAFE_INTEGER;
+      this.puckY = Number.MAX_SAFE_INTEGER;
+      this.targetOrientation = 'above';
+
       return;
     }
 
@@ -1069,15 +1132,15 @@ export class LookupPuck {
         // We've tried everything to avoid this (touch-action: none,
         // -webkit-user-select: none, etc. etc.) but it just sometimes does it.
         //
-        // Furthermore, when debugging, after about ~1hr or so it will somtimes
+        // Furthermore, when debugging, after about ~1hr or so it will sometimes
         // _stop_ eating these events, leading you to believe you've fixed it
         // only for it to start eating them again a few minutes later.
         //
-        // However, in this case it sill dispatches _mouse_ events so we listen
+        // However, in this case it still dispatches _mouse_ events so we listen
         // to them and trigger the necessary state transitions when needed.
         //
         // Note that the mere _presence_ of the mousedown handler is also needed
-        // to prevent double-tap being interpreted as a zoon.
+        // to prevent double-tap being interpreted as a zoom.
         this.puck.addEventListener('mousedown', this.onPuckMouseDown);
         this.puck.addEventListener('mouseup', this.onPuckMouseUp);
       }
@@ -1101,6 +1164,33 @@ export class LookupPuck {
     }
   }
 
+  setState(state: PuckState): void {
+    if (this.enabledState === 'disabled') {
+      return;
+    }
+
+    this.targetOrientation = state.orientation;
+    this.setPositionWithinSafeArea(state.x, state.y);
+
+    const updatedEnabledState = state.active ? 'active' : 'inactive';
+    if (this.enabledState !== updatedEnabledState) {
+      this.setEnabledState(updatedEnabledState);
+    }
+  }
+
+  notifyPuckStateChanged(): void {
+    if (this.enabledState === 'disabled') {
+      return;
+    }
+
+    this.onPuckStateChanged({
+      x: this.puckX,
+      y: this.puckY,
+      orientation: this.targetOrientation,
+      active: this.enabledState === 'active',
+    });
+  }
+
   highlightMatch(): void {
     // On iOS the selection API is very unreliable so we don't have a good way
     // of indicating to the user what they looked up, unless they enable the
@@ -1121,5 +1211,5 @@ export class LookupPuck {
 }
 
 export function removePuck(): void {
-  removeContentContainer(LookupPuck.id);
+  removeContentContainer(LookupPuckId);
 }

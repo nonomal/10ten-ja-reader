@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { extractNumberMetadata, parseNumber } from './numbers';
 
 describe('parseNumber', () => {
@@ -45,11 +47,20 @@ describe('parseNumber', () => {
     expect(parseNumber('54.321万')).toEqual(543_210);
     expect(parseNumber('987.654321万')).toBeCloseTo(9_876_543.21, 5);
     expect(parseNumber('1.2億')).toEqual(120000000);
+    // As seen here: https://www.athome.co.jp/kodate/1008941087/
+    expect(parseNumber('39,800万')).toEqual(398_000_000);
+    // https://github.com/birchill/10ten-ja-reader/issues/1399
+    expect(parseNumber('11,786百万')).toEqual(11_786_000_000);
+    expect(parseNumber('123,456,789百万')).toEqual(123_456_789_000_000);
 
     // Bogus inputs
 
     // Putting the powers of ten in the wrong order
     expect(parseNumber('七十二百一')).toStrictEqual(null);
+
+    // Don't handle metric suffixes for bare numbers--we only allow them when
+    // part of a currency.
+    expect(parseNumber('40k')).toStrictEqual(null);
 
     // Completely invalid inputs
     expect(parseNumber('abc')).toStrictEqual(null);
@@ -72,6 +83,7 @@ describe('extractNumberMetadata', () => {
     expect(extractNumberMetadata('43.2')).toStrictEqual(undefined);
     expect(extractNumberMetadata('４３．２')).toStrictEqual(undefined);
     expect(extractNumberMetadata('４３。２')).toStrictEqual(undefined);
+    expect(extractNumberMetadata('40k')).toStrictEqual(undefined);
 
     // Shouldn't be zero
     expect(extractNumberMetadata('〇〇〇')).toStrictEqual(undefined);
